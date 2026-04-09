@@ -92,10 +92,10 @@ class ClawService:
         claw = await self.domain.prepare_claw_for_creation(user_id)
         if claw.status == ClawStatus.RUNNING:
             return claw
-        task = asyncio.create_task(self._provision_in_background(claw))
-        self._bg_tasks.add(task)
-        task.add_done_callback(self._bg_tasks.discard)
-        return claw
+        logger.info(f"[claw] provisioning synchronously for user={user_id} claw_id={claw.id}")
+        await self._provision_in_background(claw)
+        refreshed = await self.domain.get_claw(user_id)
+        return refreshed or claw
 
     async def _provision_in_background(self, claw: Claw) -> None:
         await self.domain.provision_claw_instance(claw, self.settings.claw_ttl_seconds)

@@ -144,10 +144,11 @@ class ClawDomainService:
                 pass
 
     async def delete_claw(self, user_id: str) -> bool:
-        """Delete the claw record from MongoDB but keep the container alive."""
+        """Delete the claw record and destroy the backing runtime instance."""
         claw = await self.claw_repository.get_by_user_id(user_id)
         if not claw:
             return False
+        await self.claw_runtime.destroy(claw.container_name)
         return await self.claw_repository.delete_by_user_id(user_id)
 
     # ------------------------------------------------------------------
