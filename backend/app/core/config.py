@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # Model configuration
     model_name: str = "gpt-4o"
     model_provider: str = "openai"
-    available_models: list[str] | None = None
+    available_models: str | list[str] | None = None
     temperature: float = 0.7
     max_tokens: int = 2000
     
