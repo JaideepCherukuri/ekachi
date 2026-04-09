@@ -1,8 +1,8 @@
 <template>
-  <div class="flex flex-col md:flex-row h-[580px] md:h-[672px] max-h-[90vh]">
+  <div class="flex flex-col md:flex-row h-[min(90vh,580px)] md:h-[672px] max-h-[90vh]">
     <!-- Tab Sidebar -->
     <div
-      class="md:w-[221px] overflow-x-auto md:overflow-x-visible border-r border-[var(--border-main)] pb-2 md:pb-0 relative">
+      class="md:w-[221px] overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-[var(--border-main)] pb-2 md:pb-0 relative">
       <div class="items-center hidden px-5 pt-5 pb-3 md:flex">
         <div class="flex">
           <Bot :size="30" />

@@ -3,7 +3,7 @@
         <div class="min-w-max inline-block transition-[transform,opacity,scale] duration-150" tabindex="-1"
             role="dialog">
             <div
-                class="flex w-[300px] flex-col bg-[var(--background-menu-white)] rounded-[20px] border-[0.5px] border-[var(--border-dark)] shadow-[0px_8px_32px_0px_var(--shadow-XS)]">
+                class="flex w-[min(300px,calc(100vw-24px))] flex-col bg-[var(--background-menu-white)] rounded-[20px] border-[0.5px] border-[var(--border-dark)] shadow-[0px_8px_32px_0px_var(--shadow-XS)]">
                 <div class="flex gap-2 px-4 pt-5 pb-3 w-full">
                     <div class="relative flex items-center justify-center font-bold cursor-pointer flex-shrink-0">
                         <div class="relative flex items-center justify-center font-bold flex-shrink-0 rounded-full overflow-hidden"

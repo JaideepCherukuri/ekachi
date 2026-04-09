@@ -134,6 +134,9 @@ export default {
   'Account': 'Account',
   'General': 'General',
   'Language': 'Language',
+  'Model': 'Model',
+  'Select model': 'Select model',
+  'Choose the model for this new task': 'Choose the model for this new task',
   'Profile': 'Profile',
   // Profile Settings
   'Name': 'Name',

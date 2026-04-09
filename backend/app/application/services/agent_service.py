@@ -18,6 +18,7 @@ from app.domain.repositories.agent_repository import AgentRepository
 from app.domain.external.task import Task
 from app.domain.models.file import FileInfo
 from app.core.config import get_settings
+from app.application.errors.exceptions import BadRequestError
 from app.domain.repositories.mcp_repository import MCPRepository
 from app.domain.models.session import SessionStatus
 
@@ -51,19 +52,23 @@ class AgentService:
         self._search_engine = search_engine
         self._sandbox_cls = sandbox_cls
     
-    async def create_session(self, user_id: str) -> Session:
+    async def create_session(self, user_id: str, model_name: Optional[str] = None) -> Session:
         logger.info(f"Creating new session for user: {user_id}")
-        agent = await self._create_agent()
+        agent = await self._create_agent(model_name)
         session = Session(agent_id=agent.id, user_id=user_id)
         logger.info(f"Created new Session with ID: {session.id} for user: {user_id}")
         await self._session_repository.save(session)
         return session
 
-    async def _create_agent(self) -> Agent:
+    async def _create_agent(self, model_name: Optional[str] = None) -> Agent:
         logger.info("Creating new agent")
         settings = get_settings()
+        selected_model = model_name or settings.model_name
+        available_models = settings.available_models or [settings.model_name]
+        if selected_model not in available_models:
+            raise BadRequestError(f"Unsupported model: {selected_model}")
         agent = Agent(
-            model_name=settings.model_name,
+            model_name=selected_model,
             temperature=settings.temperature,
             max_tokens=settings.max_tokens,
         )

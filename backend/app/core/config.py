@@ -21,6 +21,23 @@ def _parse_extra_headers() -> dict | None:
     return None
 
 
+def _parse_available_models() -> list[str] | None:
+    raw = os.environ.get("AVAILABLE_MODELS")
+    if not raw:
+        return None
+
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            models = [str(item).strip() for item in parsed if str(item).strip()]
+            return models or None
+    except json.JSONDecodeError:
+        pass
+
+    models = [item.strip() for item in raw.split(",") if item.strip()]
+    return models or None
+
+
 class Settings(BaseSettings):
     
     # Model provider configuration
@@ -30,6 +47,7 @@ class Settings(BaseSettings):
     # Model configuration
     model_name: str = "gpt-4o"
     model_provider: str = "openai"
+    available_models: list[str] | None = None
     temperature: float = 0.7
     max_tokens: int = 2000
     
@@ -129,5 +147,6 @@ def get_settings() -> Settings:
         os.environ["OPENAI_API_KEY"] = os.getenv("API_KEY")
     settings = Settings()
     settings.extra_headers = _parse_extra_headers()
+    settings.available_models = _parse_available_models() or [settings.model_name]
     settings.validate()
     return settings 

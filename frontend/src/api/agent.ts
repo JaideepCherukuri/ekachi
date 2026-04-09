@@ -10,8 +10,10 @@ import type { FileInfo } from './file';
  * Create Session
  * @returns Session
  */
-export async function createSession(): Promise<CreateSessionResponse> {
-  const response = await apiClient.put<ApiResponse<CreateSessionResponse>>('/sessions');
+export async function createSession(modelName?: string): Promise<CreateSessionResponse> {
+  const response = await apiClient.put<ApiResponse<CreateSessionResponse>>('/sessions', {
+    model_name: modelName || undefined
+  });
   return response.data.data;
 }
 

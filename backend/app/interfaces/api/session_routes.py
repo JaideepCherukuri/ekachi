@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query, Body
 from sse_starlette.sse import EventSourceResponse
 from typing import AsyncGenerator, List, Optional
 from sse_starlette.event import ServerSentEvent
@@ -14,7 +14,7 @@ from app.application.errors.exceptions import NotFoundError, UnauthorizedError
 from app.interfaces.dependencies import get_agent_service, get_current_user, get_optional_current_user, get_token_service, verify_signature_websocket
 from app.interfaces.schemas.base import APIResponse
 from app.interfaces.schemas.session import (
-    ChatRequest, ShellViewRequest, CreateSessionResponse, GetSessionResponse,
+    ChatRequest, ShellViewRequest, CreateSessionRequest, CreateSessionResponse, GetSessionResponse,
     ListSessionItem, ListSessionResponse, ShellViewResponse,
     ShareSessionResponse, SharedSessionResponse
 )
@@ -31,10 +31,11 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 @router.put("", response_model=APIResponse[CreateSessionResponse])
 async def create_session(
+    request: CreateSessionRequest | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     agent_service: AgentService = Depends(get_agent_service)
 ) -> APIResponse[CreateSessionResponse]:
-    session = await agent_service.create_session(current_user.id)
+    session = await agent_service.create_session(current_user.id, request.model_name if request else None)
     return APIResponse.success(
         CreateSessionResponse(
             session_id=session.id,

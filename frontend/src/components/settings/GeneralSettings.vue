@@ -5,7 +5,7 @@
     <div class="mb-[24px] last:mb-[0] w-full">
       <div class="text-sm font-medium text-[var(--text-primary)] mb-[12px]">{{ t('Language') }}</div>
       <Select v-model="selectedLanguage" @update:modelValue="onLanguageChange">
-        <SelectTrigger class="w-[208px] h-[36px]">
+        <SelectTrigger class="w-full sm:w-[208px] h-[36px]">
           <SelectValue :placeholder="t('Select language')" />
         </SelectTrigger>
         <SelectContent :side-offset="5">

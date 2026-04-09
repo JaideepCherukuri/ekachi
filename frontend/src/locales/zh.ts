@@ -134,6 +134,9 @@ export default {
   'Account': '账户',
   'General': '通用',
   'Language': '语言',
+  'Model': '模型',
+  'Select model': '选择模型',
+  'Choose the model for this new task': '为这个新任务选择模型',
   'Profile': '个人资料',
   // Profile Settings
   'Name': '名称',

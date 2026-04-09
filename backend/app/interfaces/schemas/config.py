@@ -8,3 +8,5 @@ class ClientConfigResponse(BaseModel):
     github_repository_url: str
     google_analytics_id: str | None = None
     claw_enabled: bool
+    default_model_name: str
+    available_models: list[str]

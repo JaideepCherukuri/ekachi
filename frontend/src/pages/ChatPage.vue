@@ -1,6 +1,6 @@
 <template>
   <SimpleBar ref="simpleBarRef" @scroll="handleScroll">
-    <div ref="chatContainerRef" class="relative flex flex-col h-full flex-1 min-w-0 px-5">
+    <div ref="chatContainerRef" class="relative flex flex-col h-full flex-1 min-w-0 px-3 sm:px-5">
       <div ref="observerRef"
         class="sm:min-w-[390px] flex flex-row items-center justify-between pt-3 pb-1 gap-1 sticky top-0 z-10 bg-[var(--background-gray-main)] flex-shrink-0">
         <div class="flex items-center flex-1">
@@ -31,8 +31,7 @@
                   </PopoverTrigger>
                   <PopoverContent>
                     <div
-                      class="w-[400px] flex flex-col rounded-2xl bg-[var(--background-menu-white)] shadow-[0px_8px_32px_0px_var(--shadow-S),0px_0px_0px_1px_var(--border-light)]"
-                      style="max-width: calc(-16px + 100vw);">
+                      class="w-[min(400px,calc(100vw-16px))] flex flex-col rounded-2xl bg-[var(--background-menu-white)] shadow-[0px_8px_32px_0px_var(--shadow-S),0px_0px_0px_1px_var(--border-light)]">
                       <div class="flex flex-col pt-[12px] px-[16px] pb-[16px]">
                         <!-- Private mode option -->
                         <div @click="handleShareModeChange('private')"

@@ -6,7 +6,7 @@
       'h-full w-full top-0 ltr:right-0 rtl:left-0 z-50 fixed sm:sticky sm:top-0 sm:right-0 sm:h-[100vh] sm:ml-3 sm:py-3 sm:mr-4': isShow,
       'h-full overflow-hidden': !isShow 
     }"
-    :style="{ 'width': isShow ? `${parentSize/2}px` : '0px', 'opacity': isShow ? '1' : '0', 'transition': '0.2s ease-in-out' }">
+    :style="{ 'width': isShow ? `${panelWidth}px` : '0px', 'opacity': isShow ? '1' : '0', 'transition': '0.2s ease-in-out' }">
     <div class="h-full" :style="{ 'width': isShow ? '100%' : '0px' }">
       <ToolPanelContent v-if="isShow && toolContent" :sessionId="sessionId" :realTime="realTime" :toolContent="toolContent" :live="live" :isShare="isShare" @hide="hideToolPanel" @jumpToRealTime="jumpToRealTime" />
     </div>
@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import type { ToolContent } from '../types/message'
 import ToolPanelContent from './ToolPanelContent.vue'
 import { useResizeObserver } from '../composables/useResizeObserver'
@@ -32,6 +32,12 @@ const isShow = ref(false)
 const live = ref(false)
 const toolContent = ref<ToolContent>()
 const visible = ref(true)
+const panelWidth = computed(() => {
+  if (typeof window !== 'undefined' && window.innerWidth < 640) {
+    return parentSize.value
+  }
+  return parentSize.value / 2
+})
 
 const emit = defineEmits<{
   (e: 'jumpToRealTime'): void

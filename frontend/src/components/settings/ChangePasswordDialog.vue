@@ -1,6 +1,6 @@
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="bg-[var(--background-menu-white)] w-[480px]">
+    <DialogContent class="bg-[var(--background-menu-white)] w-[95vw] max-w-[480px]">
       <DialogHeader>
         <DialogTitle>
           {{ t('Update Password') }}

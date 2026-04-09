@@ -1,6 +1,6 @@
 <template>
   <SimpleBar ref="simpleBarRef" @scroll="handleScroll">
-    <div class="relative flex flex-col h-full flex-1 min-w-0 px-5">
+    <div class="relative flex flex-col h-full flex-1 min-w-0 px-3 sm:px-5">
       <header class="sm:h-auto sticky top-0 left-0 right-0 z-10" style="background: var(--background-share-header);">
         <div
           class="min-h-[52px] px-[16px] py-[10px] sm:px-5 sm:py-3 items-center flex justify-between bg-[var(--background-gray-main)]">

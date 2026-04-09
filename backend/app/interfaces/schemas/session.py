@@ -12,6 +12,11 @@ class ChatRequest(BaseModel):
     event_id: Optional[str] = None
 
 
+class CreateSessionRequest(BaseModel):
+    """Create session request schema"""
+    model_name: Optional[str] = None
+
+
 class ShellViewRequest(BaseModel):
     """Shell view request schema"""
     session_id: str

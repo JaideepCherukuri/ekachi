@@ -1,8 +1,8 @@
 <template>
   <SimpleBar>
     <div
-      class="flex flex-col h-full flex-1 min-w-0 mx-auto w-full sm:min-w-[390px] px-5 justify-center items-start gap-2 relative max-w-full sm:max-w-full">
-      <div class="w-full pt-4 pb-4 px-5 bg-[var(--background-gray-main)] sticky top-0 z-10 mx-[-1.25]">
+      class="flex flex-col h-full flex-1 min-w-0 mx-auto w-full sm:min-w-[390px] px-3 sm:px-5 justify-center items-start gap-2 relative max-w-full sm:max-w-full">
+      <div class="w-full pt-4 pb-4 px-3 sm:px-5 bg-[var(--background-gray-main)] sticky top-0 z-10 mx-[-0.75rem] sm:mx-[-1.25rem]">
         <div class="flex justify-between items-center w-full absolute left-0 right-0">
           <div class="h-8 relative z-20 overflow-hidden flex gap-2 items-center flex-shrink-0">
             <div class="relative flex items-center">
@@ -44,7 +44,7 @@
         </div>
         <div class="h-8"></div>
       </div>
-      <div class="w-full max-w-full sm:max-w-[768px] sm:min-w-[390px] mx-auto mt-[180px] mb-auto">
+      <div class="w-full max-w-full sm:max-w-[768px] sm:min-w-[390px] mx-auto mt-24 sm:mt-[180px] mb-auto">
         <div class="w-full flex pl-4 items-center justify-start pb-4">
           <span class="text-[var(--text-primary)] text-start font-serif text-[32px] leading-[40px]" :style="{
             fontFamily:
@@ -58,6 +58,29 @@
           </span>
         </div>
         <div class="flex flex-col gap-1 w-full">
+          <div
+            v-if="availableModels.length > 1"
+            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-[18px] border border-[var(--border-main)] bg-[var(--background-white-main)] px-3 py-3 mb-3"
+          >
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-[var(--text-primary)]">{{ t('Model') }}</div>
+              <div class="text-xs text-[var(--text-tertiary)]">{{ t('Choose the model for this new task') }}</div>
+            </div>
+            <Select v-model="selectedModel">
+              <SelectTrigger class="w-full sm:w-[280px] h-[38px]">
+                <SelectValue :placeholder="t('Select model')" />
+              </SelectTrigger>
+              <SelectContent :side-offset="5">
+                <SelectItem
+                  v-for="model in availableModels"
+                  :key="model"
+                  :value="model"
+                >
+                  {{ model }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div class="flex flex-col bg-[var(--background-gray-main)] w-full">
             <div class="[&amp;:not(:empty)]:pb-2 bg-[var(--background-gray-main)] rounded-[22px_22px_0px_0px]">
             </div>
@@ -85,6 +108,7 @@ import { useFilePanel } from '../composables/useFilePanel';
 import { useAuth } from '../composables/useAuth';
 import { getCachedClientConfig } from '../api/config';
 import UserMenu from '../components/UserMenu.vue';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const { t } = useI18n();
 const router = useRouter();
@@ -96,6 +120,8 @@ const { hideFilePanel } = useFilePanel();
 const { currentUser } = useAuth();
 const showGithubButton = ref(false);
 const githubRepositoryUrl = ref('https://github.com/JaideepCherukuri/ekachi');
+const availableModels = ref<string[]>([]);
+const selectedModel = ref('');
 
 // Get first letter of user's fullname for avatar display
 const avatarLetter = computed(() => {
@@ -131,6 +157,8 @@ onMounted(async () => {
   if (clientConfig) {
     showGithubButton.value = clientConfig.show_github_button;
     githubRepositoryUrl.value = clientConfig.github_repository_url;
+    availableModels.value = clientConfig.available_models ?? [];
+    selectedModel.value = clientConfig.default_model_name ?? clientConfig.available_models?.[0] ?? '';
   }
 });
 
@@ -140,7 +168,7 @@ const handleSubmit = async () => {
 
     try {
       // Create new Agent
-      const session = await createSession();
+      const session = await createSession(selectedModel.value || undefined);
       const sessionId = session.session_id;
 
       // Navigate to new route with session_id, passing initial message via state

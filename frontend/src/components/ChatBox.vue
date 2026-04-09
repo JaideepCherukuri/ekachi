@@ -3,7 +3,7 @@
         <div
             class="flex flex-col gap-3 rounded-[22px] transition-all relative bg-[var(--fill-input-chat)] py-3 max-h-[300px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] border border-black/8 dark:border-[var(--border-main)]">
             <ChatBoxFiles ref="chatBoxFileListRef" :attachments="attachments" />
-            <div class="overflow-y-auto pl-4 pr-2">
+            <div class="overflow-y-auto pl-3 sm:pl-4 pr-2">
                 <textarea
                     class="flex rounded-md border-input focus-visible:outline-none focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden flex-1 bg-transparent p-0 pt-[1px] border-0 focus-visible:ring-0 focus-visible:ring-offset-0 w-full placeholder:text-[var(--text-disable)] text-[15px] shadow-none resize-none min-h-[40px]"
                     :rows="rows" :value="modelValue"
@@ -12,7 +12,7 @@
                     @keydown.enter.exact="handleEnterKeydown" :placeholder="t('Give Manus a task to work on...')"
                     :style="{ height: '46px' }"></textarea>
             </div>
-            <footer class="flex flex-row justify-between w-full px-3">
+            <footer class="flex flex-row justify-between w-full px-3 gap-2">
                 <div class="flex gap-2 pr-2 items-center">
                     <button @click="uploadFile"
                         class="rounded-full border border-[var(--border-main)] inline-flex items-center justify-center gap-1 clickable cursor-pointer text-xs text-[var(--text-secondary)] hover:bg-[var(--fill-tsp-gray-main)] w-8 h-8 p-0 data-[popover-trigger]:bg-[var(--fill-tsp-gray-main)] shrink-0"
