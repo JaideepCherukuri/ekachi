@@ -1,0 +1,59 @@
+services:
+  backend:
+    image: simpleyyt/manus-backend:latest
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+      - sandbox
+      - claw
+    env_file:
+      - .env.production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - manus-network
+
+  sandbox:
+    image: simpleyyt/manus-sandbox:latest
+    command: /bin/sh -c "exit 0"
+    restart: "no"
+    networks:
+      - manus-network
+
+  claw:
+    image: simpleyyt/manus-claw:latest
+    entrypoint: /bin/sh -c "exit 0"
+    restart: "no"
+    networks:
+      - manus-network
+
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - manus-network
+
+  redis:
+    image: redis:7.2
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - manus-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  manus-network:
+    name: manus-network
+    driver: bridge

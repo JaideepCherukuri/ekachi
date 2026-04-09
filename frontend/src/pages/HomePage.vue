@@ -95,11 +95,11 @@ const { toggleLeftPanel, isLeftPanelShow } = useLeftPanel();
 const { hideFilePanel } = useFilePanel();
 const { currentUser } = useAuth();
 const showGithubButton = ref(false);
-const githubRepositoryUrl = ref('https://github.com/simpleyyt/ai-manus');
+const githubRepositoryUrl = ref('https://github.com/JaideepCherukuri/ekachi');
 
 // Get first letter of user's fullname for avatar display
 const avatarLetter = computed(() => {
-  return currentUser.value?.fullname?.charAt(0)?.toUpperCase() || 'M';
+  return currentUser.value?.fullname?.charAt(0)?.toUpperCase() || 'E';
 });
 
 // User menu state
