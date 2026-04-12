@@ -202,7 +202,7 @@ import { useContextMenu, createDangerMenuItem, createMenuItem } from '@/composab
 import { useDialog } from '@/composables/useDialog';
 
 const { t } = useI18n()
-const { isLeftPanelShow, toggleLeftPanel } = useLeftPanel()
+const { isLeftPanelShow, toggleLeftPanel, hideLeftPanel } = useLeftPanel()
 const route = useRoute()
 const router = useRouter()
 const { showContextMenu } = useContextMenu()
@@ -281,7 +281,14 @@ const fetchSessions = async () => {
 }
 
 const handleNewTaskClick = () => {
+  collapseMobilePanel()
   router.push('/')
+}
+
+const collapseMobilePanel = () => {
+  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches) {
+    hideLeftPanel()
+  }
 }
 
 const getProjectSessionCount = (projectId: string) => {
@@ -351,14 +358,17 @@ const handleProjectMenuClick = (event: MouseEvent, projectId: string) => {
 }
 
 const handleClawClick = () => {
+  collapseMobilePanel()
   router.push('/chat/claw')
 }
 
 const handleAutomationClick = () => {
+  collapseMobilePanel()
   router.push('/chat/automation')
 }
 
 const handleControlCenterClick = () => {
+  collapseMobilePanel()
   router.push('/chat/control')
 }
 

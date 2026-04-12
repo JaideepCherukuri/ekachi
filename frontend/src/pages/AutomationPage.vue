@@ -2,6 +2,20 @@
   <SimpleBar>
     <div class="flex flex-col h-full flex-1 min-w-0 px-3 sm:px-5 py-4">
       <div class="mx-auto w-full max-w-full sm:max-w-[1180px] flex flex-col gap-4">
+        <div class="ek-sticky-glass rounded-[20px] px-3 py-3 sm:px-4 sm:py-4">
+          <div class="flex items-center gap-3">
+            <button
+              v-if="!isLeftPanelShow"
+              type="button"
+              class="flex h-8 w-8 items-center justify-center rounded-md text-[var(--icon-secondary)] hover:bg-[var(--fill-tsp-gray-main)]"
+              @click="toggleLeftPanel"
+            >
+              <PanelLeft class="size-5" />
+            </button>
+            <div class="text-sm font-medium text-[var(--text-secondary)]">Automation</div>
+          </div>
+        </div>
+
         <div class="ek-sticky-glass rounded-[24px] px-4 py-4">
           <div class="flex items-start justify-between gap-4 flex-wrap">
             <div class="min-w-0">
@@ -351,6 +365,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { PanelLeft } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 
 import SimpleBar from '@/components/SimpleBar.vue'
@@ -368,10 +383,12 @@ import {
 } from '@/api/triggers'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useProjects } from '@/composables/useProjects'
+import { useLeftPanel } from '@/composables/useLeftPanel'
 import type { TriggerResponse, TriggerRunResponse } from '@/types/response'
 import { TriggerRunStatus, TriggerStatus, TriggerType } from '@/types/response'
 
 const router = useRouter()
+const { isLeftPanelShow, toggleLeftPanel } = useLeftPanel()
 const { activeProjectId, getProjectById, hydrateProjects } = useProjects()
 
 const triggers = ref<TriggerResponse[]>([])

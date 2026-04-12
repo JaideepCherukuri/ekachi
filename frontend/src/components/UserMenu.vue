@@ -3,7 +3,7 @@
         <div class="min-w-max inline-block transition-[transform,opacity,scale] duration-150" tabindex="-1"
             role="dialog">
             <div
-                class="ek-glass-card flex w-[min(320px,calc(100vw-24px))] flex-col rounded-[20px] border-[0.5px] border-[var(--glass-border-strong)]">
+                class="profile-menu-surface flex w-[min(320px,calc(100vw-24px))] flex-col rounded-[20px] border-[0.5px] border-[var(--glass-border-strong)]">
                 <div class="flex gap-2 px-4 pt-5 pb-3 w-full">
                     <div class="relative flex items-center justify-center font-bold cursor-pointer flex-shrink-0">
                         <div class="relative flex items-center justify-center font-bold flex-shrink-0 rounded-full overflow-hidden"
@@ -142,3 +142,22 @@ onMounted(async () => {
     authProvider.value = await getCachedAuthProvider();
 });
 </script>
+
+<style scoped>
+.profile-menu-surface {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.88)),
+        var(--glass-surface-strong);
+    box-shadow:
+        0 20px 40px rgba(15, 23, 42, 0.12),
+        var(--glass-shadow-soft);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+:global(.dark) .profile-menu-surface {
+    background:
+        linear-gradient(180deg, rgba(20, 24, 31, 0.94), rgba(20, 24, 31, 0.9)),
+        var(--glass-surface-strong);
+}
+</style>

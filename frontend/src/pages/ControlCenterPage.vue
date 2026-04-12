@@ -1,6 +1,20 @@
 <template>
   <SimpleBar>
     <div class="flex flex-col h-full flex-1 min-w-0 mx-auto w-full max-w-[1280px] px-3 sm:px-5 pt-4 pb-10 gap-4">
+      <section class="ek-sticky-glass rounded-[20px] px-3 py-3 sm:px-4 sm:py-4">
+        <div class="flex items-center gap-3">
+          <button
+            v-if="!isLeftPanelShow"
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-md text-[var(--icon-secondary)] hover:bg-[var(--fill-tsp-gray-main)]"
+            @click="toggleLeftPanel"
+          >
+            <PanelLeft class="size-5" />
+          </button>
+          <div class="text-sm font-medium text-[var(--text-secondary)]">Control Center</div>
+        </div>
+      </section>
+
       <section class="ek-glass-card rounded-[24px] p-5 sm:p-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div class="max-w-3xl">
@@ -519,6 +533,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { PanelLeft } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 
 import BrowserSettings from '@/components/settings/BrowserSettings.vue'
@@ -536,6 +551,7 @@ import { getCachedControlPlaneConfig, type ControlPlaneConfigResponse } from '@/
 import { getMcpConnectors, type MCPConnectorStatus } from '@/api/mcp'
 import { type ProviderResponse, getProviders } from '@/api/providers'
 import { useProjects } from '@/composables/useProjects'
+import { useLeftPanel } from '@/composables/useLeftPanel'
 import type { ListSessionItem } from '@/types/response'
 import { showErrorToast, showSuccessToast } from '@/utils/toast'
 
@@ -547,6 +563,7 @@ type ChannelTab = 'overview' | 'slack' | 'whatsapp' | 'lark'
 
 const router = useRouter()
 const route = useRoute()
+const { isLeftPanelShow, toggleLeftPanel } = useLeftPanel()
 
 const topTabs: Array<{ id: TopTab; label: string }> = [
   { id: 'projects', label: 'Projects' },

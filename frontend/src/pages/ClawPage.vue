@@ -1,6 +1,20 @@
 <template>
   <SimpleBar ref="simpleBarRef" @scroll="handleScroll">
     <div class="relative flex flex-col h-full flex-1 min-w-0 px-5">
+      <div
+        v-if="!hasClaw"
+        class="ek-sticky-glass flex items-center gap-3 rounded-[20px] px-3 py-3 sticky top-0 z-10 mb-4"
+      >
+        <button
+          v-if="!isLeftPanelShow"
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded-md text-[var(--icon-secondary)] hover:bg-[var(--fill-tsp-gray-main)]"
+          @click="toggleLeftPanel"
+        >
+          <PanelLeft class="size-5" />
+        </button>
+        <div class="text-sm font-medium text-[var(--text-secondary)]">Ekachi Claw</div>
+      </div>
 
       <!-- Header (only shown when claw exists) -->
       <div
