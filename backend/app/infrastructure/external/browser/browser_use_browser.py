@@ -458,3 +458,33 @@ class BrowserUseBrowser:
             return ToolResult(success=True, data={"logs": logs})
         except Exception as exc:
             return ToolResult(success=False, message=f"Failed to view console: {exc}")
+
+    async def set_cookies(self, cookies: List[dict[str, Any]]) -> ToolResult:
+        """Apply cookies to the current page context."""
+        try:
+            if not cookies:
+                return ToolResult(success=True, data={"applied_count": 0})
+
+            page = await self._get_current_page()
+            normalized: List[dict[str, Any]] = []
+            for cookie in cookies:
+                if not cookie.get("name") or not cookie.get("value") or not cookie.get("domain"):
+                    continue
+                normalized_cookie: dict[str, Any] = {
+                    "name": cookie["name"],
+                    "value": cookie["value"],
+                    "domain": cookie["domain"],
+                    "path": cookie.get("path") or "/",
+                    "httpOnly": bool(cookie.get("httpOnly", False)),
+                    "secure": bool(cookie.get("secure", False)),
+                }
+                if cookie.get("sameSite"):
+                    normalized_cookie["sameSite"] = cookie["sameSite"]
+                if cookie.get("expires") is not None:
+                    normalized_cookie["expires"] = cookie["expires"]
+                normalized.append(normalized_cookie)
+
+            await page.context.add_cookies(normalized)
+            return ToolResult(success=True, data={"applied_count": len(normalized)})
+        except Exception as exc:
+            return ToolResult(success=False, message=f"Failed to apply cookies: {exc}")

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, UTC
-from typing import List, Optional
+from typing import Any, List, Optional
 from enum import Enum
 import uuid
 from app.domain.models.event import PlanEvent, AgentEvent
@@ -26,6 +26,18 @@ class SessionSummary(BaseModel):
     latest_message_at: Optional[datetime] = None
     status: SessionStatus = SessionStatus.PENDING
     is_shared: bool = False
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    search_provider: Optional[str] = None
+    browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
 
 
 class Session(BaseModel):
@@ -45,6 +57,18 @@ class Session(BaseModel):
     files: List[FileInfo] = []
     status: SessionStatus = SessionStatus.PENDING
     is_shared: bool = False  # Whether this session is shared publicly
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    search_provider: Optional[str] = None
+    browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
 
     def get_last_plan(self) -> Optional[Plan]:
         """Get the last plan from the events"""

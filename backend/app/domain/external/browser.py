@@ -1,4 +1,4 @@
-from typing import Optional, Protocol
+from typing import Any, Optional, Protocol
 from app.domain.models.tool_result import ToolResult
 
 class Browser(Protocol):
@@ -83,4 +83,8 @@ class Browser(Protocol):
     
     async def console_view(self, max_lines: Optional[int] = None) -> ToolResult:
         """View console output"""
+        ...
+
+    async def set_cookies(self, cookies: list[dict[str, Any]]) -> ToolResult:
+        """Apply cookies to the active browser context."""
         ...

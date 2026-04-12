@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Type, TypeVar, Generic, get_args, Self
+from typing import Any, Dict, Optional, List, Type, TypeVar, Generic, get_args, Self
 from datetime import datetime, timezone, UTC
 from beanie import Document
 from pydantic import BaseModel, Field
@@ -9,6 +9,10 @@ from app.domain.models.session import Session, SessionStatus
 from app.domain.models.file import FileInfo
 from app.domain.models.user import User, UserRole
 from app.domain.models.claw import Claw, ClawStatus, ClawMessage
+from app.domain.models.project import BrowserPoolEntry, Project
+from app.domain.models.provider import Provider
+from app.domain.models.capability import Skill, ProjectMemoryNote, WorkerProfile, WorkerRole, WorkerLane, SkillSource
+from app.domain.models.trigger import Trigger, TriggerRun, TriggerStatus, TriggerType, TriggerRunStatus
 from pymongo import IndexModel, ASCENDING, DESCENDING
 
 T = TypeVar('T', bound=BaseModel)
@@ -52,6 +56,7 @@ class UserDocument(BaseDocument[User], id_field="user_id", domain_model_class=Us
     password_hash: Optional[str] = None
     role: UserRole = UserRole.USER
     is_active: bool = True
+    help_improve: bool = False
     created_at: datetime = datetime.now(timezone.utc)
     updated_at: datetime = datetime.now(timezone.utc)
     last_login_at: Optional[datetime] = None
@@ -68,6 +73,11 @@ class AgentDocument(BaseDocument[Agent], id_field="agent_id", domain_model_class
     """MongoDB document for Agent"""
     agent_id: str
     model_name: str
+    provider_id: str
+    provider_label: str
+    model_provider: str
+    api_base: Optional[str] = None
+    encrypted_api_key: Optional[str] = None
     temperature: float
     max_tokens: int
     memories: Dict[str, Memory] = {}
@@ -98,6 +108,18 @@ class SessionDocument(BaseDocument[Session], id_field="session_id", domain_model
     status: SessionStatus
     files: List[FileInfo] = []
     is_shared: Optional[bool] = False
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    search_provider: Optional[str] = None
+    browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
     class Settings:
         name = "sessions"
         indexes = [
@@ -107,6 +129,171 @@ class SessionDocument(BaseDocument[Session], id_field="session_id", domain_model
                 [("user_id", ASCENDING), ("latest_message_at", DESCENDING)],
                 name="user_id_latest_message_at",
             ),
+        ]
+
+
+class ProjectDocument(BaseDocument[Project], id_field="project_id", domain_model_class=Project):
+    """MongoDB document for Project"""
+    project_id: str
+    user_id: str
+    name: str
+    color: str
+    default_provider_id: Optional[str] = None
+    default_model_name: Optional[str] = None
+    preferred_search_provider: Optional[str] = None
+    preferred_browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_pool: List[BrowserPoolEntry] = []
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "projects"
+        indexes = [
+            "project_id",
+            IndexModel([("user_id", ASCENDING), ("updated_at", DESCENDING)], name="user_id_updated_at"),
+        ]
+
+
+class ProviderDocument(BaseDocument[Provider], id_field="provider_id", domain_model_class=Provider):
+    provider_id: str
+    user_id: str
+    label: str
+    model_provider: str
+    api_base: Optional[str] = None
+    encrypted_api_key: Optional[str] = None
+    available_models: List[str] = []
+    default_model_name: Optional[str] = None
+    enabled: bool = True
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "providers"
+        indexes = [
+            "provider_id",
+            IndexModel([("user_id", ASCENDING), ("updated_at", DESCENDING)], name="user_id_provider_updated_at"),
+        ]
+
+
+class TriggerDocument(BaseDocument[Trigger], id_field="trigger_id", domain_model_class=Trigger):
+    trigger_id: str
+    user_id: str
+    project_id: Optional[str] = None
+    name: str
+    prompt: str
+    trigger_type: TriggerType
+    status: TriggerStatus = TriggerStatus.ACTIVE
+    webhook_secret: Optional[str] = None
+    schedule_cron: Optional[str] = None
+    schedule_timezone: str = "UTC"
+    next_run_at: Optional[datetime] = None
+    last_run_at: Optional[datetime] = None
+    last_run_status: Optional[TriggerRunStatus] = None
+    execution_count: int = 0
+    success_count: int = 0
+    failure_count: int = 0
+    cancelled_count: int = 0
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "triggers"
+        indexes = [
+            "trigger_id",
+            IndexModel([("user_id", ASCENDING), ("project_id", ASCENDING), ("updated_at", DESCENDING)], name="user_project_updated_at"),
+            IndexModel([("trigger_type", ASCENDING), ("status", ASCENDING), ("next_run_at", ASCENDING)], name="schedule_poll"),
+            IndexModel([("trigger_id", ASCENDING), ("webhook_secret", ASCENDING)], name="webhook_lookup"),
+        ]
+
+
+class TriggerRunDocument(BaseDocument[TriggerRun], id_field="trigger_run_id", domain_model_class=TriggerRun):
+    trigger_run_id: str
+    trigger_id: str
+    user_id: str
+    project_id: Optional[str] = None
+    session_id: Optional[str] = None
+    trigger_type: TriggerType
+    status: TriggerRunStatus = TriggerRunStatus.PENDING
+    source: TriggerType
+    input_payload: Optional[dict] = None
+    output_summary: Optional[str] = None
+    error_message: Optional[str] = None
+    duration_seconds: Optional[float] = None
+    attempt_number: int = 1
+    started_at: datetime = datetime.now(timezone.utc)
+    completed_at: Optional[datetime] = None
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "trigger_runs"
+        indexes = [
+            "trigger_run_id",
+            IndexModel([("user_id", ASCENDING), ("project_id", ASCENDING), ("started_at", DESCENDING)], name="user_project_started_at"),
+            IndexModel([("trigger_id", ASCENDING), ("started_at", DESCENDING)], name="trigger_started_at"),
+        ]
+
+
+class SkillDocument(BaseDocument[Skill], id_field="skill_id", domain_model_class=Skill):
+    skill_id: str
+    user_id: str
+    project_id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    instructions: str
+    source: SkillSource = "user"
+    template_key: Optional[str] = None
+    enabled: bool = True
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "skills"
+        indexes = [
+            "skill_id",
+            IndexModel([("user_id", ASCENDING), ("project_id", ASCENDING), ("updated_at", DESCENDING)], name="user_project_skill_updated_at"),
+        ]
+
+
+class MemoryNoteDocument(BaseDocument[ProjectMemoryNote], id_field="memory_note_id", domain_model_class=ProjectMemoryNote):
+    memory_note_id: str
+    user_id: str
+    project_id: Optional[str] = None
+    content: str
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "memory_notes"
+        indexes = [
+            "memory_note_id",
+            IndexModel([("user_id", ASCENDING), ("project_id", ASCENDING)], name="user_project_memory"),
+        ]
+
+
+class WorkerDocument(BaseDocument[WorkerProfile], id_field="worker_id", domain_model_class=WorkerProfile):
+    worker_id: str
+    user_id: str
+    project_id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    role: WorkerRole = "custom"
+    lane: WorkerLane = "execution"
+    instructions: str
+    tool_names: List[str] = []
+    enabled: bool = True
+    created_at: datetime = datetime.now(timezone.utc)
+    updated_at: datetime = datetime.now(timezone.utc)
+
+    class Settings:
+        name = "workers"
+        indexes = [
+            "worker_id",
+            IndexModel([("user_id", ASCENDING), ("project_id", ASCENDING), ("lane", ASCENDING), ("updated_at", DESCENDING)], name="user_project_worker_lane_updated_at"),
         ]
 
 

@@ -481,7 +481,7 @@ class DockerSandbox(Sandbox):
             logger.error(f"Failed to destroy Docker sandbox: {str(e)}")
             return False
     
-    async def get_browser(self) -> Browser:
+    async def get_browser(self, engine: Optional[str] = None, cdp_url: Optional[str] = None) -> Browser:
         """Get browser instance
 
         Returns a browser implementation connected to the sandbox's Chrome via CDP.
@@ -490,12 +490,13 @@ class DockerSandbox(Sandbox):
           - "browser_use"  → BrowserUseBrowser  (default)
         """
         settings = get_settings()
-        engine = (settings.browser_engine or "browser_use").lower().strip()
-        if engine == "browser_use":
-            logger.info("Using BrowserUseBrowser engine for CDP URL: %s", self.cdp_url)
-            return BrowserUseBrowser(self.cdp_url)
-        logger.info("Using PlaywrightBrowser engine for CDP URL: %s", self.cdp_url)
-        return PlaywrightBrowser(self.cdp_url)
+        selected_engine = (engine or settings.browser_engine or "browser_use").lower().strip()
+        target_cdp_url = (cdp_url or self.cdp_url).strip()
+        if selected_engine == "browser_use":
+            logger.info("Using BrowserUseBrowser engine for CDP URL: %s", target_cdp_url)
+            return BrowserUseBrowser(target_cdp_url)
+        logger.info("Using PlaywrightBrowser engine for CDP URL: %s", target_cdp_url)
+        return PlaywrightBrowser(target_cdp_url)
 
     @staticmethod
     @alru_cache(maxsize=128, typed=True)

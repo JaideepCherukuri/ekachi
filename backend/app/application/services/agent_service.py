@@ -15,12 +15,15 @@ from app.domain.external.sandbox import Sandbox
 from app.domain.external.search import SearchEngine
 from app.domain.external.file import FileStorage
 from app.domain.repositories.agent_repository import AgentRepository
+from app.domain.repositories.project_repository import ProjectRepository
+from app.domain.repositories.capability_repository import CapabilityRepository
 from app.domain.external.task import Task
 from app.domain.models.file import FileInfo
+from app.application.services.provider_service import ProviderService
 from app.core.config import get_settings
-from app.application.errors.exceptions import BadRequestError
 from app.domain.repositories.mcp_repository import MCPRepository
 from app.domain.models.session import SessionStatus
+from app.infrastructure.external.search import create_search_engine
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -34,7 +37,11 @@ class AgentService:
         task_cls: Type[Task],
         file_storage: FileStorage,
         mcp_repository: MCPRepository,
+        provider_service: ProviderService,
         search_engine: Optional[SearchEngine] = None,
+        project_repository: Optional[ProjectRepository] = None,
+        capability_repository: Optional[CapabilityRepository] = None,
+        search_engine_factory=None,
     ):
         logger.info("Initializing AgentService")
         self._agent_repository = agent_repository
@@ -48,27 +55,81 @@ class AgentService:
             file_storage,
             mcp_repository,
             search_engine,
+            search_engine_factory,
         )
         self._search_engine = search_engine
         self._sandbox_cls = sandbox_cls
+        self._provider_service = provider_service
+        self._project_repository = project_repository
+        self._capability_repository = capability_repository
+        self._search_engine_factory = search_engine_factory or create_search_engine
     
-    async def create_session(self, user_id: str, model_name: Optional[str] = None) -> Session:
+    async def create_session(
+        self,
+        user_id: str,
+        model_name: Optional[str] = None,
+        provider_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+        project_name: Optional[str] = None,
+        project_color: Optional[str] = None,
+    ) -> Session:
         logger.info(f"Creating new session for user: {user_id}")
-        agent = await self._create_agent(model_name)
-        session = Session(agent_id=agent.id, user_id=user_id)
+        project = await self._get_project(user_id, project_id)
+        effective_provider_id = provider_id or (project.default_provider_id if project and project.default_provider_id else None)
+        effective_model_name = model_name or (project.default_model_name if project and project.default_model_name else None)
+        agent = await self._create_agent(
+            user_id=user_id,
+            model_name=effective_model_name,
+            provider_id=effective_provider_id,
+        )
+        resolved_project_id, resolved_project_name, resolved_project_color = await self._resolve_project_metadata(
+            user_id=user_id,
+            project_id=project_id,
+            project_name=project_name,
+            project_color=project_color,
+        )
+        settings = get_settings()
+        session = Session(
+            agent_id=agent.id,
+            user_id=user_id,
+            project_id=resolved_project_id,
+            project_name=resolved_project_name,
+            project_color=resolved_project_color,
+            provider_id=agent.provider_id,
+            provider_label=agent.provider_label,
+            model_name=agent.model_name,
+            search_provider=project.preferred_search_provider if project and project.preferred_search_provider else settings.search_provider,
+            browser_engine=project.preferred_browser_engine if project and project.preferred_browser_engine else settings.browser_engine,
+            browser_cdp_url=project.browser_cdp_url if project else None,
+            browser_cookie_profile=project.browser_cookie_profile if project else None,
+            browser_extension_paths=list(project.browser_extension_paths) if project else [],
+            browser_cookies=list(project.browser_cookies) if project else [],
+        )
         logger.info(f"Created new Session with ID: {session.id} for user: {user_id}")
         await self._session_repository.save(session)
         return session
 
-    async def _create_agent(self, model_name: Optional[str] = None) -> Agent:
+    async def _create_agent(
+        self,
+        *,
+        user_id: str,
+        model_name: Optional[str] = None,
+        provider_id: Optional[str] = None,
+    ) -> Agent:
         logger.info("Creating new agent")
         settings = get_settings()
-        selected_model = model_name or settings.model_name
-        available_models = settings.available_models or [settings.model_name]
-        if selected_model not in available_models:
-            raise BadRequestError(f"Unsupported model: {selected_model}")
+        runtime = await self._provider_service.resolve_runtime_config(
+            user_id=user_id,
+            provider_id=provider_id,
+            model_name=model_name,
+        )
         agent = Agent(
-            model_name=selected_model,
+            model_name=runtime.default_model_name,
+            provider_id=runtime.provider_id,
+            provider_label=runtime.label,
+            model_provider=runtime.model_provider,
+            api_base=runtime.api_base,
+            encrypted_api_key=self._provider_service.encrypt_api_key(runtime.api_key) if runtime.api_key else None,
             temperature=settings.temperature,
             max_tokens=settings.max_tokens,
         )
@@ -90,7 +151,13 @@ class AgentService:
         event_id: Optional[str] = None,
         attachments: Optional[List[dict]] = None
     ) -> AsyncGenerator[AgentEvent, None]:
-        logger.info(f"Starting chat with session {session_id}: {message[:50]}...")
+        safe_message = message or ""
+        logger.info(f"Starting chat with session {session_id}: {safe_message[:50]}...")
+        if safe_message.strip():
+            session = await self._session_repository.find_by_id_and_user_id(session_id, user_id)
+            if not session:
+                raise RuntimeError("Session not found")
+            message = await self._build_runtime_message(session, safe_message)
         # Directly use the domain service's chat method, which will check if the session exists
         async for event in self._agent_domain_service.chat(session_id, user_id, message, timestamp, event_id, attachments):
             logger.debug(f"Received event: {event}")
@@ -258,6 +325,94 @@ class AgentService:
         
         await self._session_repository.update_shared_status(session_id, False)
         logger.info(f"Session {session_id} unshared successfully")
+
+    async def update_session_project(
+        self,
+        session_id: str,
+        user_id: str,
+        project_id: Optional[str],
+        project_name: Optional[str],
+        project_color: Optional[str],
+    ) -> Session:
+        """Update project metadata for a session, ensuring it belongs to the user."""
+        logger.info(f"Updating project metadata for session {session_id} for user {user_id}")
+        session = await self._session_repository.find_by_id_and_user_id(session_id, user_id)
+        if not session:
+            logger.error(f"Session {session_id} not found for user {user_id}")
+            raise RuntimeError("Session not found")
+
+        resolved_project_id, resolved_project_name, resolved_project_color = await self._resolve_project_metadata(
+            user_id=user_id,
+            project_id=project_id,
+            project_name=project_name,
+            project_color=project_color,
+        )
+        await self._session_repository.update_project(
+            session_id,
+            resolved_project_id,
+            resolved_project_name,
+            resolved_project_color,
+        )
+        updated = await self._session_repository.find_by_id_and_user_id(session_id, user_id)
+        if not updated:
+            raise RuntimeError("Session not found after update")
+        return updated
+
+    async def _resolve_project_metadata(
+        self,
+        user_id: str,
+        project_id: Optional[str],
+        project_name: Optional[str],
+        project_color: Optional[str],
+    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        if not project_id:
+            return None, None, None
+
+        if self._project_repository:
+            project = await self._project_repository.find_by_id_and_user_id(project_id, user_id)
+            if project:
+                return project.id, project.name, project.color
+
+        return project_id, project_name, project_color
+
+    async def _get_project(self, user_id: str, project_id: Optional[str]):
+        if not project_id or not self._project_repository:
+            return None
+        return await self._project_repository.find_by_id_and_user_id(project_id, user_id)
+
+    async def _build_runtime_message(self, session: Session, message: str) -> str:
+        sections: list[str] = []
+        if self._capability_repository:
+            memory = await self._capability_repository.get_memory(session.user_id, session.project_id)
+            skills = await self._capability_repository.find_skills_by_user_id(session.user_id, session.project_id)
+            workers = await self._capability_repository.find_workers_by_user_id(session.user_id, session.project_id)
+            enabled_skills = [skill for skill in skills if skill.enabled]
+            enabled_workers = [worker for worker in workers if worker.enabled]
+
+            if memory and memory.content.strip():
+                sections.append(f"Project memory:\n{memory.content.strip()}")
+            if enabled_workers:
+                worker_lines = [
+                    f"- {worker.name} [{worker.role} / {worker.lane}] tools={', '.join(worker.tool_names) or 'none'}: {worker.instructions.strip()}"
+                    for worker in enabled_workers
+                ]
+                sections.append("Enabled workers:\n" + "\n".join(worker_lines))
+            if enabled_skills:
+                skill_lines = [f"- {skill.name}: {skill.instructions.strip()}" for skill in enabled_skills]
+                sections.append("Enabled skills:\n" + "\n".join(skill_lines))
+        browser_profile_lines: list[str] = []
+        if session.browser_cdp_url:
+            browser_profile_lines.append(f"- Remote CDP endpoint: {session.browser_cdp_url}")
+        if session.browser_cookie_profile and session.browser_cookie_profile.strip():
+            browser_profile_lines.append(f"- Cookie profile notes:\n{session.browser_cookie_profile.strip()}")
+        if session.browser_extension_paths:
+            browser_profile_lines.append("- Extension paths:\n" + "\n".join(f"  - {path}" for path in session.browser_extension_paths))
+        if browser_profile_lines:
+            sections.append("Browser profile:\n" + "\n".join(browser_profile_lines))
+        if not sections:
+            return message
+        sections.append(f"User request:\n{message}")
+        return "\n\n".join(sections)
 
     async def get_shared_session(self, session_id: str) -> Optional[Session]:
         """Get a shared session by ID (no user authentication required)"""

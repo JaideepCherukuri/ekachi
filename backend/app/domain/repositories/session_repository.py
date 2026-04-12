@@ -70,6 +70,30 @@ class SessionRepository(Protocol):
     async def update_shared_status(self, session_id: str, is_shared: bool) -> None:
         """Update the shared status of a session"""
         ...
+
+    async def update_project(
+        self,
+        session_id: str,
+        project_id: str | None,
+        project_name: str | None,
+        project_color: str | None,
+    ) -> None:
+        """Update the project metadata of a session"""
+        ...
+
+    async def update_project_for_user_sessions(
+        self,
+        user_id: str,
+        project_id: str,
+        project_name: str,
+        project_color: str,
+    ) -> None:
+        """Update project metadata for all sessions in a user's project"""
+        ...
+
+    async def clear_project_for_user_sessions(self, user_id: str, project_id: str) -> None:
+        """Clear project metadata for all sessions in a user's project"""
+        ...
     
     async def delete(self, session_id: str) -> None:
         """Delete a session"""

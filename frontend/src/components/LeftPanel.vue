@@ -6,8 +6,8 @@
       'width: 24px; transition: width 0.36s cubic-bezier(0.4, 0, 0.2, 1);'">
     <div
       :class="isLeftPanelShow ?
-        'flex flex-col overflow-hidden bg-[var(--background-nav)] h-full opacity-100 translate-x-0' :
-        'flex flex-col overflow-hidden bg-[var(--background-nav)] fixed top-1 start-1 bottom-1 z-[1] border-1 dark:border-[1px] border-[var(--border-main)] dark:border-[var(--border-light)] rounded-xl shadow-[0px_8px_32px_0px_rgba(0,0,0,0.16),0px_0px_0px_1px_rgba(0,0,0,0.06)] opacity-0 pointer-events-none -translate-x-10'"
+        'ek-glass-panel flex flex-col overflow-hidden h-full opacity-100 translate-x-0 rounded-[28px]' :
+        'ek-glass-panel flex flex-col overflow-hidden fixed top-1 start-1 bottom-1 z-[1] rounded-xl opacity-0 pointer-events-none -translate-x-10'"
       :style="(isLeftPanelShow ? 'width: 300px;' : 'width: 0px;') + ' transition: opacity 0.2s, transform 0.2s, width 0.2s;'">
 
       <!-- 顶部折叠按钮 -->
@@ -25,12 +25,63 @@
 
       <!-- 快捷入口区域 -->
       <div class="flex flex-col flex-1 min-h-0 px-[8px] pb-0 gap-px">
+        <div class="px-[2px] pb-2">
+          <div class="ek-glass-soft rounded-[16px] p-2 flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-2 px-1">
+              <div class="text-[13px] font-medium text-[var(--text-tertiary)] tracking-[-0.091px]">
+                Projects
+              </div>
+              <div
+                @click="toggleCreateProject"
+                class="flex h-7 w-7 items-center justify-center cursor-pointer hover:bg-[var(--glass-surface-soft)] rounded-md"
+              >
+                <FolderPlus class="h-4 w-4 text-[var(--icon-secondary)]" />
+              </div>
+            </div>
+
+            <div v-if="isCreatingProject" class="px-1">
+              <input
+                v-model="newProjectName"
+                @keydown.enter.prevent="handleCreateProject"
+                @keydown.esc="cancelCreateProject"
+                class="w-full h-9 rounded-[10px] border border-[var(--glass-border-strong)] bg-[var(--glass-surface)] px-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-disable)]"
+                placeholder="New project name"
+              />
+            </div>
+
+            <div class="flex flex-col gap-1">
+              <div
+                v-for="project in projects"
+                :key="project.id"
+                class="group flex items-center gap-2 rounded-[12px] px-2 py-2 cursor-pointer transition-colors"
+                :class="activeProjectId === project.id ? 'bg-[var(--glass-surface)]' : 'hover:bg-[var(--glass-surface-soft)]'"
+                @click="handleProjectSelect(project.id)"
+              >
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="{ backgroundColor: project.color }"></span>
+                <span class="flex-1 min-w-0 truncate text-[13px] text-[var(--text-primary)] font-medium">
+                  {{ project.name }}
+                </span>
+                <span class="text-[11px] text-[var(--text-tertiary)]">
+                  {{ getProjectSessionCount(project.id) }}
+                </span>
+                <div
+                  v-if="!project.system"
+                  @click.stop="handleProjectMenuClick($event, project.id)"
+                  class="group-hover:flex hidden size-7 rounded-[8px] cursor-pointer items-center justify-center hover:bg-[var(--glass-surface-soft)]"
+                  :class="projectMenuOpenId === project.id ? '!flex bg-[var(--glass-surface-soft)]' : ''"
+                >
+                  <Ellipsis :size="16" class="text-[var(--icon-tertiary)]" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- 新建任务 -->
         <div
           @click="handleNewTaskClick"
           class="flex items-center rounded-[10px] cursor-pointer transition-colors w-full gap-[12px] h-[36px] ps-[9px] pe-[2px]"
-          :class="route.path === '/' ? 'bg-[var(--fill-tsp-white-main)]' : 'hover:bg-[var(--fill-tsp-white-light)]'">
+          :class="route.path === '/' ? 'bg-[var(--glass-surface-soft)]' : 'hover:bg-[var(--glass-surface-soft)]'">
           <div class="shrink-0 size-[18px] flex items-center justify-center">
             <SquarePen :size="18" class="text-[var(--text-primary)]" />
           </div>
@@ -52,12 +103,38 @@
           v-if="clawEnabled"
           @click="handleClawClick"
           class="flex items-center rounded-[10px] cursor-pointer transition-colors w-full gap-[12px] h-[36px] ps-[9px] pe-[2px]"
-          :class="route.path === '/chat/claw' ? 'bg-[var(--fill-tsp-white-main)]' : 'hover:bg-[var(--fill-tsp-white-light)]'">
+          :class="route.path === '/chat/claw' ? 'bg-[var(--glass-surface-soft)]' : 'hover:bg-[var(--glass-surface-soft)]'">
           <div class="shrink-0 size-[18px] flex items-center justify-center">
             <div class="claw-nav-icon w-[18px] h-[18px]" />
           </div>
           <div class="flex-1 min-w-0 flex gap-[4px] items-center text-[14px] text-[var(--text-primary)]">
             <span class="truncate">Ekachi Claw</span>
+          </div>
+        </div>
+
+        <div
+          @click="handleAutomationClick"
+          class="flex items-center rounded-[10px] cursor-pointer transition-colors w-full gap-[12px] h-[36px] ps-[9px] pe-[2px]"
+          :class="route.path === '/chat/automation' ? 'bg-[var(--glass-surface-soft)]' : 'hover:bg-[var(--glass-surface-soft)]'">
+          <div class="shrink-0 size-[18px] flex items-center justify-center">
+            <Zap :size="18" class="text-[var(--text-primary)]" />
+          </div>
+          <div class="flex-1 min-w-0 flex gap-[4px] items-center text-[14px] text-[var(--text-primary)]">
+            <span class="truncate">Automation</span>
+          </div>
+        </div>
+
+        <div
+          @click="handleControlCenterClick"
+          class="flex items-center rounded-[10px] cursor-pointer transition-colors w-full gap-[12px] h-[36px] ps-[9px] pe-[2px]"
+          :class="route.path === '/chat/control' || route.path === '/chat/history'
+            ? 'bg-[var(--glass-surface-soft)]'
+            : 'hover:bg-[var(--glass-surface-soft)]'">
+          <div class="shrink-0 size-[18px] flex items-center justify-center">
+            <LayoutGrid :size="18" class="text-[var(--text-primary)]" />
+          </div>
+          <div class="flex-1 min-w-0 flex gap-[4px] items-center text-[14px] text-[var(--text-primary)]">
+            <span class="truncate">Control Center</span>
           </div>
         </div>
 
@@ -71,10 +148,11 @@
             <!-- 分组标题 -->
             <div
               class="group flex items-center justify-between ps-[10px] pe-[2px] py-[2px] h-[36px] gap-[12px] flex-shrink-0 cursor-pointer hover:bg-[var(--fill-tsp-white-light)] transition-colors rounded-[10px]"
+              :class="isListScrolled ? 'bg-[var(--glass-surface-soft)]' : ''"
               @click="isAllTasksCollapsed = !isAllTasksCollapsed">
               <div class="flex items-center flex-1 min-w-0 gap-0.5">
                 <span class="text-[13px] leading-[18px] text-[var(--text-tertiary)] font-medium min-w-0 truncate tracking-[-0.091px]">
-                  {{ t('All Tasks') }}
+                  {{ activeProject.name }} · {{ t('All Tasks') }}
                 </span>
                 <ChevronUp
                   :size="14"
@@ -86,9 +164,9 @@
 
             <!-- 会话列表 -->
             <template v-if="!isAllTasksCollapsed">
-              <div v-if="sessions.length > 0" class="flex flex-col gap-px">
+              <div v-if="filteredSessions.length > 0" class="flex flex-col gap-px">
                 <SessionItem
-                  v-for="session in sessions"
+                  v-for="session in filteredSessions"
                   :key="session.session_id"
                   :session="session"
                   @deleted="handleSessionDeleted" />
@@ -110,20 +188,38 @@
 </template>
 
 <script setup lang="ts">
-import { PanelLeft, SquarePen, Command, MessageSquareDashed, ChevronUp } from 'lucide-vue-next';
+import { computed, ref, onMounted, watch, onUnmounted } from 'vue';
+import { ChevronUp, Command, Ellipsis, FolderPlus, LayoutGrid, MessageSquareDashed, PanelLeft, SquarePen, Pencil, Trash, Zap } from 'lucide-vue-next';
 import SessionItem from './SessionItem.vue';
 import { useLeftPanel } from '../composables/useLeftPanel';
-import { ref, onMounted, watch, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getSessionsSSE, getSessions } from '../api/agent';
 import { getCachedClientConfig } from '../api/config';
 import { ListSessionItem } from '../types/response';
 import { useI18n } from 'vue-i18n';
+import { useProjects } from '@/composables/useProjects';
+import { useContextMenu, createDangerMenuItem, createMenuItem } from '@/composables/useContextMenu';
+import { useDialog } from '@/composables/useDialog';
 
 const { t } = useI18n()
 const { isLeftPanelShow, toggleLeftPanel } = useLeftPanel()
 const route = useRoute()
 const router = useRouter()
+const { showContextMenu } = useContextMenu()
+const { showConfirmDialog } = useDialog()
+const {
+  projects,
+  activeProjectId,
+  getProjectById,
+  getProjectIdForSession,
+  setActiveProject,
+  hydrateProjects,
+  createProjectRemote,
+  renameProjectRemote,
+  deleteProjectRemote,
+  removeSessionFromProjects,
+  syncSessions
+} = useProjects()
 
 const sessions = ref<ListSessionItem[]>([])
 const cancelGetSessionsSSE = ref<(() => void) | null>(null)
@@ -131,6 +227,14 @@ const isAllTasksCollapsed = ref(false)
 const isListScrolled = ref(false)
 const clawEnabled = ref(false)
 const scrollContainerRef = ref<HTMLElement | null>(null)
+const isCreatingProject = ref(false)
+const newProjectName = ref('')
+const projectMenuOpenId = ref<string | null>(null)
+
+const activeProject = computed(() => getProjectById(activeProjectId.value))
+const filteredSessions = computed(() => {
+  return sessions.value.filter((session) => getProjectIdForSession(session.session_id) === activeProjectId.value)
+})
 
 const handleListScroll = () => {
   if (scrollContainerRef.value) {
@@ -143,6 +247,7 @@ const updateSessions = async () => {
   try {
     const response = await getSessions()
     sessions.value = response.sessions
+    syncSessions(response.sessions)
   } catch (error) {
     console.error('Failed to fetch sessions:', error)
   }
@@ -161,6 +266,7 @@ const fetchSessions = async () => {
       },
       onMessage: (event) => {
         sessions.value = event.data.sessions
+        syncSessions(event.data.sessions)
       },
       onError: (error) => {
         console.error('Failed to fetch sessions:', error)
@@ -178,13 +284,88 @@ const handleNewTaskClick = () => {
   router.push('/')
 }
 
+const getProjectSessionCount = (projectId: string) => {
+  return sessions.value.filter((session) => getProjectIdForSession(session.session_id) === projectId).length
+}
+
+const toggleCreateProject = () => {
+  isCreatingProject.value = !isCreatingProject.value
+  if (!isCreatingProject.value) {
+    newProjectName.value = ''
+  }
+}
+
+const cancelCreateProject = () => {
+  isCreatingProject.value = false
+  newProjectName.value = ''
+}
+
+const handleCreateProject = async () => {
+  try {
+    const created = await createProjectRemote(newProjectName.value)
+    if (!created) return
+    newProjectName.value = ''
+    isCreatingProject.value = false
+  } catch (error) {
+    console.error('Failed to create project:', error)
+  }
+}
+
+const handleProjectSelect = (projectId: string) => {
+  setActiveProject(projectId)
+}
+
+const handleProjectMenuClick = (event: MouseEvent, projectId: string) => {
+  const target = event.currentTarget as HTMLElement
+  projectMenuOpenId.value = projectId
+  showContextMenu(projectId, target, [
+    createMenuItem('rename', 'Rename', { icon: Pencil }),
+    createDangerMenuItem('delete', 'Delete', { icon: Trash }),
+  ], (itemKey, id) => {
+    if (itemKey === 'rename') {
+      const project = getProjectById(id)
+      const nextName = window.prompt('Rename project', project.name)
+      if (nextName) {
+        renameProjectRemote(id, nextName).catch((error) => {
+          console.error('Failed to rename project:', error)
+        })
+      }
+    }
+
+    if (itemKey === 'delete') {
+      showConfirmDialog({
+        title: 'Delete project?',
+        content: 'Sessions in this project will be moved back to Inbox.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        confirmType: 'danger',
+        onConfirm: async () => {
+          await deleteProjectRemote(id)
+          await updateSessions()
+        }
+      })
+    }
+  }, () => {
+    projectMenuOpenId.value = null
+  })
+}
+
 const handleClawClick = () => {
   router.push('/chat/claw')
+}
+
+const handleAutomationClick = () => {
+  router.push('/chat/automation')
+}
+
+const handleControlCenterClick = () => {
+  router.push('/chat/control')
 }
 
 const handleSessionDeleted = (sessionId: string) => {
   console.log('handleSessionDeleted', sessionId)
   sessions.value = sessions.value.filter(session => session.session_id !== sessionId);
+  removeSessionFromProjects(sessionId)
 }
 
 // Handle keyboard shortcuts
@@ -201,6 +382,11 @@ onMounted(async () => {
     clawEnabled.value = cfg?.claw_enabled ?? false
   })
 
+  try {
+    await hydrateProjects()
+  } catch (error) {
+    console.error('Failed to hydrate projects:', error)
+  }
   // Initial fetch of sessions
   fetchSessions()
 
@@ -219,8 +405,18 @@ onUnmounted(() => {
 })
 
 watch(() => route.path, async () => {
+  const currentSessionId = route.params.sessionId as string | undefined
+  if (currentSessionId) {
+    setActiveProject(getProjectIdForSession(currentSessionId))
+  }
   await updateSessions()
 })
+
+watch(() => route.params.sessionId, (sessionId) => {
+  if (typeof sessionId === 'string') {
+    setActiveProject(getProjectIdForSession(sessionId))
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

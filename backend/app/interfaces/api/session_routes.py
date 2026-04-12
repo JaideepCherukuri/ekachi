@@ -15,7 +15,7 @@ from app.interfaces.dependencies import get_agent_service, get_current_user, get
 from app.interfaces.schemas.base import APIResponse
 from app.interfaces.schemas.session import (
     ChatRequest, ShellViewRequest, CreateSessionRequest, CreateSessionResponse, GetSessionResponse,
-    ListSessionItem, ListSessionResponse, ShellViewResponse,
+    ListSessionItem, ListSessionResponse, ShellViewResponse, UpdateSessionProjectRequest,
     ShareSessionResponse, SharedSessionResponse
 )
 from app.interfaces.schemas.file import FileViewRequest, FileViewResponse
@@ -35,10 +35,27 @@ async def create_session(
     current_user: User = Depends(get_current_user),
     agent_service: AgentService = Depends(get_agent_service)
 ) -> APIResponse[CreateSessionResponse]:
-    session = await agent_service.create_session(current_user.id, request.model_name if request else None)
+    session = await agent_service.create_session(
+        current_user.id,
+        request.model_name if request else None,
+        request.provider_id if request else None,
+        request.project_id if request else None,
+        request.project_name if request else None,
+        request.project_color if request else None,
+    )
     return APIResponse.success(
         CreateSessionResponse(
             session_id=session.id,
+            provider_id=session.provider_id,
+            provider_label=session.provider_label,
+            model_name=session.model_name,
+            project_id=session.project_id,
+            project_name=session.project_name,
+            project_color=session.project_color,
+            browser_cdp_url=session.browser_cdp_url,
+            browser_cookie_profile=session.browser_cookie_profile,
+            browser_extension_paths=session.browser_extension_paths,
+            browser_cookies=session.browser_cookies,
         )
     )
 
@@ -56,7 +73,18 @@ async def get_session(
         title=session.title,
         status=session.status,
         events=await EventMapper.events_to_sse_events(session.events),
-        is_shared=session.is_shared
+        is_shared=session.is_shared,
+        project_id=session.project_id,
+        project_name=session.project_name,
+        project_color=session.project_color,
+        provider_id=session.provider_id,
+        provider_label=session.provider_label,
+        model_name=session.model_name,
+        browser_engine=session.browser_engine,
+        browser_cdp_url=session.browser_cdp_url,
+        browser_cookie_profile=session.browser_cookie_profile,
+        browser_extension_paths=session.browser_extension_paths,
+        browser_cookies=session.browser_cookies,
     ))
 
 @router.delete("/{session_id}", response_model=APIResponse[None])
@@ -98,10 +126,21 @@ async def get_all_sessions(
             title=s.title,
             status=s.status,
             unread_message_count=s.unread_message_count,
-            latest_message=s.latest_message,
-            latest_message_at=int(s.latest_message_at.timestamp()) if s.latest_message_at else None,
-            is_shared=s.is_shared
-        ) for s in summaries
+                latest_message=s.latest_message,
+                latest_message_at=int(s.latest_message_at.timestamp()) if s.latest_message_at else None,
+                is_shared=s.is_shared,
+                project_id=s.project_id,
+                project_name=s.project_name,
+                project_color=s.project_color,
+                provider_id=s.provider_id,
+                provider_label=s.provider_label,
+                model_name=s.model_name,
+                browser_engine=s.browser_engine,
+                browser_cdp_url=s.browser_cdp_url,
+                browser_cookie_profile=s.browser_cookie_profile,
+                browser_extension_paths=s.browser_extension_paths,
+                browser_cookies=s.browser_cookies,
+            ) for s in summaries
     ]
     return APIResponse.success(ListSessionResponse(sessions=session_items))
 
@@ -121,7 +160,18 @@ async def stream_sessions(
                     unread_message_count=s.unread_message_count,
                     latest_message=s.latest_message,
                     latest_message_at=int(s.latest_message_at.timestamp()) if s.latest_message_at else None,
-                    is_shared=s.is_shared
+                    is_shared=s.is_shared,
+                    project_id=s.project_id,
+                    project_name=s.project_name,
+                    project_color=s.project_color,
+                    provider_id=s.provider_id,
+                    provider_label=s.provider_label,
+                    model_name=s.model_name,
+                    browser_engine=s.browser_engine,
+                    browser_cdp_url=s.browser_cdp_url,
+                    browser_cookie_profile=s.browser_cookie_profile,
+                    browser_extension_paths=s.browser_extension_paths,
+                    browser_cookies=s.browser_cookies,
                 ) for s in summaries
             ]
             yield ServerSentEvent(
@@ -130,6 +180,42 @@ async def stream_sessions(
             )
             await asyncio.sleep(SESSION_POLL_INTERVAL)
     return EventSourceResponse(event_generator())
+
+
+@router.patch("/{session_id}/project", response_model=APIResponse[GetSessionResponse])
+async def update_session_project(
+    session_id: str,
+    request: UpdateSessionProjectRequest,
+    current_user: User = Depends(get_current_user),
+    agent_service: AgentService = Depends(get_agent_service),
+) -> APIResponse[GetSessionResponse]:
+    session = await agent_service.update_session_project(
+        session_id=session_id,
+        user_id=current_user.id,
+        project_id=request.project_id,
+        project_name=request.project_name,
+        project_color=request.project_color,
+    )
+    return APIResponse.success(
+        GetSessionResponse(
+            session_id=session.id,
+            title=session.title,
+            status=session.status,
+            events=await EventMapper.events_to_sse_events(session.events),
+            is_shared=session.is_shared,
+            project_id=session.project_id,
+            project_name=session.project_name,
+            project_color=session.project_color,
+            provider_id=session.provider_id,
+            provider_label=session.provider_label,
+            model_name=session.model_name,
+            browser_engine=session.browser_engine,
+            browser_cdp_url=session.browser_cdp_url,
+            browser_cookie_profile=session.browser_cookie_profile,
+            browser_extension_paths=session.browser_extension_paths,
+            browser_cookies=session.browser_cookies,
+        )
+    )
 
 @router.post("/{session_id}/chat")
 async def chat(
@@ -391,5 +477,15 @@ async def get_shared_session(
         title=session.title,
         status=session.status,
         events=await EventMapper.events_to_sse_events(session.events),
-        is_shared=session.is_shared
+        is_shared=session.is_shared,
+        project_id=session.project_id,
+        project_name=session.project_name,
+        project_color=session.project_color,
+        provider_id=session.provider_id,
+        provider_label=session.provider_label,
+        model_name=session.model_name,
+        browser_engine=session.browser_engine,
+        browser_cdp_url=session.browser_cdp_url,
+        browser_cookie_profile=session.browser_cookie_profile,
+        browser_extension_paths=session.browser_extension_paths,
     ))

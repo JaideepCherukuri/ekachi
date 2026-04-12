@@ -10,8 +10,27 @@ export interface ClientConfigResponse {
   available_models: string[]
 }
 
+export interface ControlPlaneConfigResponse {
+  auth_provider: string
+  model_provider: string
+  default_model_name: string
+  available_models: string[]
+  browser_engine: string
+  search_provider: string | null
+  supported_search_providers: string[]
+  supported_browser_engines: string[]
+  show_github_button: boolean
+  github_repository_url: string
+  google_analytics_enabled: boolean
+  claw_enabled: boolean
+  email_enabled: boolean
+  mcp_configured: boolean
+}
+
 let clientConfigCache: ClientConfigResponse | null = null
 let isClientConfigLoaded = false
+let controlPlaneConfigCache: ControlPlaneConfigResponse | null = null
+let isControlPlaneConfigLoaded = false
 
 /**
  * Get client runtime configuration.
@@ -47,4 +66,28 @@ export async function getCachedClientConfig(): Promise<ClientConfigResponse | nu
 export async function getCachedAuthProvider(): Promise<string | null> {
   const clientConfig = await getCachedClientConfig()
   return clientConfig?.auth_provider || null
+}
+
+/**
+ * Get richer non-secret runtime capability metadata for the settings control plane.
+ */
+export async function getControlPlaneConfig(): Promise<ControlPlaneConfigResponse> {
+  const response = await apiClient.get<ApiResponse<ControlPlaneConfigResponse>>('/config/control-plane')
+  return response.data.data
+}
+
+export async function getCachedControlPlaneConfig(): Promise<ControlPlaneConfigResponse | null> {
+  if (isControlPlaneConfigLoaded) {
+    return controlPlaneConfigCache
+  }
+
+  try {
+    controlPlaneConfigCache = await getControlPlaneConfig()
+    isControlPlaneConfigLoaded = true
+    return controlPlaneConfigCache
+  } catch (error) {
+    console.warn('Failed to load control plane configuration:', error)
+    isControlPlaneConfigLoaded = true
+    return null
+  }
 }

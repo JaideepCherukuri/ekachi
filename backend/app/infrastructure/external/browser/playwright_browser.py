@@ -631,3 +631,30 @@ class PlaywrightBrowser:
         if max_lines is not None:
             logs = logs[-max_lines:]
         return ToolResult(success=True, data={"logs": logs})
+
+    async def set_cookies(self, cookies: List[Dict[str, Any]]) -> ToolResult:
+        """Apply cookies to the active page context."""
+        await self._ensure_page()
+        if not cookies:
+            return ToolResult(success=True, data={"applied_count": 0})
+
+        normalized: List[Dict[str, Any]] = []
+        for cookie in cookies:
+            if not cookie.get("name") or not cookie.get("value") or not cookie.get("domain"):
+                continue
+            normalized_cookie: Dict[str, Any] = {
+                "name": cookie["name"],
+                "value": cookie["value"],
+                "domain": cookie["domain"],
+                "path": cookie.get("path") or "/",
+                "httpOnly": bool(cookie.get("httpOnly", False)),
+                "secure": bool(cookie.get("secure", False)),
+            }
+            if cookie.get("sameSite"):
+                normalized_cookie["sameSite"] = cookie["sameSite"]
+            if cookie.get("expires") is not None:
+                normalized_cookie["expires"] = cookie["expires"]
+            normalized.append(normalized_cookie)
+
+        await self.page.context.add_cookies(normalized)
+        return ToolResult(success=True, data={"applied_count": len(normalized)})

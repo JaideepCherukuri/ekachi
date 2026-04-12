@@ -17,6 +17,7 @@ class User(BaseModel):
     password_hash: Optional[str] = None
     role: UserRole = UserRole.USER
     is_active: bool = True
+    help_improve: bool = False
     created_at: datetime = datetime.now(UTC)
     updated_at: datetime = datetime.now(UTC)
     last_login_at: Optional[datetime] = None
@@ -48,4 +49,9 @@ class User(BaseModel):
     def activate(self):
         """Activate user account"""
         self.is_active = True
-        self.updated_at = datetime.now(UTC) 
+        self.updated_at = datetime.now(UTC)
+
+    def set_help_improve(self, enabled: bool):
+        """Update the product improvement preference"""
+        self.help_improve = enabled
+        self.updated_at = datetime.now(UTC)

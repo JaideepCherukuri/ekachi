@@ -52,11 +52,12 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { ListSessionItem, SessionStatus } from '../types/response';
-import { useContextMenu, createDangerMenuItem } from '../composables/useContextMenu';
+import { useContextMenu, createDangerMenuItem, createMenuItem } from '../composables/useContextMenu';
 import { useDialog } from '../composables/useDialog';
-import { deleteSession } from '../api/agent';
+import { deleteSession, updateSessionProject } from '../api/agent';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
-import { Trash } from 'lucide-vue-next';
+import { FolderInput, Trash } from 'lucide-vue-next';
+import { useProjects } from '@/composables/useProjects';
 
 interface Props {
   session: ListSessionItem;
@@ -70,6 +71,7 @@ const router = useRouter();
 const { showContextMenu } = useContextMenu();
 const { showConfirmDialog } = useDialog();
 const isContextMenuOpen = ref(false);
+const { projects, getProjectIdForSession, assignSessionToProject, syncSession } = useProjects();
 
 const emit = defineEmits<{
   (e: 'deleted', sessionId: string): void
@@ -92,10 +94,37 @@ const handleSessionMenuClick = (event: MouseEvent) => {
 
   const target = event.currentTarget as HTMLElement;
   isContextMenuOpen.value = true;
+  const currentProjectId = getProjectIdForSession(props.session.session_id);
+  const projectItems = projects.value.map((project) =>
+    createMenuItem(`move:${project.id}`, `Move to ${project.name}`, {
+      icon: FolderInput,
+      checked: project.id === currentProjectId,
+      disabled: project.id === currentProjectId,
+    })
+  );
 
   showContextMenu(props.session.session_id, target, [
+    ...projectItems,
     createDangerMenuItem('delete', t('Delete'), { icon: Trash }),
   ], (itemKey: string, _: string) => {
+    if (itemKey.startsWith('move:')) {
+      const projectId = itemKey.replace('move:', '');
+      const project = projects.value.find((item) => item.id === projectId)
+      updateSessionProject(props.session.session_id, {
+        project_id: projectId,
+        project_name: project?.name,
+        project_color: project?.color,
+      }).then((session) => {
+        syncSession(session)
+        assignSessionToProject(props.session.session_id, projectId);
+        showSuccessToast(`Moved to ${project?.name || 'project'}`);
+      }).catch((error) => {
+        console.error('Failed to persist session project:', error)
+        showErrorToast('Failed to update project')
+      })
+      return;
+    }
+
     if (itemKey === 'delete') {
       showConfirmDialog({
         title: t('Are you sure you want to delete this session?'),

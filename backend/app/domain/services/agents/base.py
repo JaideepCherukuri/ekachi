@@ -13,13 +13,14 @@ from app.domain.models.event import (
     MessageEvent,
 )
 from app.domain.repositories.agent_repository import AgentRepository
-from langchain.chat_models import init_chat_model
 from langchain_classic.output_parsers.retry import RetryWithErrorOutputParser
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from app.core.config import get_settings
+from app.application.services.secret_cipher import SecretCipher
 from langchain.messages import AIMessage, HumanMessage, ToolCall, ToolMessage, SystemMessage
 from app.domain.services.tools.base import Tool
+from app.domain.services.model_factory import build_chat_model
 from app.domain.utils.robust_json_parser import RobustJsonParser, ToolCallParseError
 
 
@@ -47,31 +48,42 @@ class BaseAgent(ABC):
         agent_repository: AgentRepository,
         tools: List[BaseToolkit] = []
     ):
-        settings = get_settings()
         self._agent_id = agent_id
         self._repository = agent_repository
-        kwargs = dict(
-            model=settings.model_name,
-            model_provider=settings.model_provider,
-            temperature=settings.temperature,
-            max_tokens=settings.max_tokens,
-            base_url=settings.api_base,
-        )
-        if settings.extra_headers:
-            kwargs["default_headers"] = settings.extra_headers
-        self._model = init_chat_model(**kwargs)
-        self._json_output_parser = RetryWithErrorOutputParser.from_llm(
-            parser=JsonOutputParser(),
-            llm=self._model,
-            max_retries=self.max_retries,
-        )
+        self._settings = get_settings()
+        self._secret_cipher = SecretCipher(self._settings.jwt_secret_key)
+        self._model = None
+        self._json_output_parser = None
         self.toolkits = tools
         self.memory = None
 
     async def _parse_json(self, text: str) -> dict:
         """Parse JSON from LLM output using RetryWithErrorOutputParser."""
+        await self._ensure_model()
         prompt_value = self._JSON_PARSE_PROMPT.format_prompt(input=text)
         return await self._json_output_parser.aparse_with_prompt(text, prompt_value)
+
+    async def _ensure_model(self):
+        if self._model is not None and self._json_output_parser is not None:
+            return
+        agent = await self._repository.find_by_id(self._agent_id)
+        if not agent:
+            raise RuntimeError(f"Agent {self._agent_id} not found")
+        api_key = self._secret_cipher.decrypt(agent.encrypted_api_key) if agent.encrypted_api_key else None
+        self._model = build_chat_model(
+            model_name=agent.model_name,
+            model_provider=agent.model_provider,
+            temperature=agent.temperature,
+            max_tokens=agent.max_tokens,
+            api_base=agent.api_base,
+            api_key=api_key,
+            default_headers=self._settings.extra_headers,
+        )
+        self._json_output_parser = RetryWithErrorOutputParser.from_llm(
+            parser=JsonOutputParser(),
+            llm=self._model,
+            max_retries=self.max_retries,
+        )
     
     def get_tool(self, name: str) -> Optional[Tool]:
         """Get specified tool"""
@@ -166,6 +178,7 @@ class BaseAgent(ABC):
         await self._repository.save_memory(self._agent_id, self.name, self.memory)
 
     async def ask_with_messages(self, messages: List[Dict[str, Any]], format: Optional[str] = None) -> AIMessage:
+        await self._ensure_model()
         await self._add_to_memory(messages)
 
         response_format = None

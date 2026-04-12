@@ -15,6 +15,8 @@ import ChatPage from './pages/ChatPage.vue'
 import LoginPage from './pages/LoginPage.vue'
 import MainLayout from './pages/MainLayout.vue'
 import ClawPage from './pages/ClawPage.vue'
+import AutomationPage from './pages/AutomationPage.vue'
+import ControlCenterPage from './pages/ControlCenterPage.vue'
 import SharePage from './pages/SharePage.vue'
 import ShareLayout from './pages/ShareLayout.vue'
 
@@ -36,6 +38,17 @@ export const router = createRouter({
         {
           path: 'claw',
           component: ClawPage,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'automation',
+          component: AutomationPage,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'control',
+          component: ControlCenterPage,
+          alias: ['history'],
           meta: { requiresAuth: true }
         },
         { 

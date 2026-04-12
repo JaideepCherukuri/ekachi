@@ -4,15 +4,33 @@ import { AgentSSEEvent } from '../types/event';
 import { CreateSessionResponse, GetSessionResponse, ShellViewResponse, FileViewResponse, ListSessionResponse, SignedUrlResponse, ShareSessionResponse, SharedSessionResponse } from '../types/response';
 import type { FileInfo } from './file';
 
+export interface SessionAttachmentRef {
+  file_id: string
+  filename: string
+}
+
+export interface SessionProjectPayload {
+  project_id?: string | null
+  project_name?: string | null
+  project_color?: string | null
+}
 
 
 /**
  * Create Session
  * @returns Session
  */
-export async function createSession(modelName?: string): Promise<CreateSessionResponse> {
+export async function createSession(
+  modelName?: string,
+  project?: SessionProjectPayload,
+  providerId?: string
+): Promise<CreateSessionResponse> {
   const response = await apiClient.put<ApiResponse<CreateSessionResponse>>('/sessions', {
-    model_name: modelName || undefined
+    model_name: modelName || undefined,
+    provider_id: providerId || undefined,
+    project_id: project?.project_id || undefined,
+    project_name: project?.project_name || undefined,
+    project_color: project?.project_color || undefined,
   });
   return response.data.data;
 }
@@ -25,6 +43,11 @@ export async function getSession(sessionId: string): Promise<GetSessionResponse>
 export async function getSessions(): Promise<ListSessionResponse> {
   const response = await apiClient.get<ApiResponse<ListSessionResponse>>('/sessions');
   return response.data.data;
+}
+
+export async function updateSessionProject(sessionId: string, project: SessionProjectPayload): Promise<GetSessionResponse> {
+  const response = await apiClient.patch<ApiResponse<GetSessionResponse>>(`/sessions/${sessionId}/project`, project)
+  return response.data.data
 }
 
 export async function getSessionsSSE(callbacks?: SSECallbacks<ListSessionResponse>): Promise<() => void> {
@@ -86,7 +109,7 @@ export const chatWithSession = async (
   sessionId: string, 
   message: string = '',
   eventId?: string,
-  attachments?: string[],
+  attachments?: SessionAttachmentRef[],
   callbacks?: SSECallbacks<AgentSSEEvent['data']>
 ): Promise<() => void> => {
   return createSSEConnection<AgentSSEEvent['data']>(

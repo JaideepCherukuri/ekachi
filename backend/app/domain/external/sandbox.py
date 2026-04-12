@@ -255,7 +255,7 @@ class Sandbox(Protocol):
         """
         ...
     
-    async def get_browser(self) -> Browser:
+    async def get_browser(self, engine: Optional[str] = None, cdp_url: Optional[str] = None) -> Browser:
         """Get browser instance
         
         Returns:

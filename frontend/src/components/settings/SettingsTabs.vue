@@ -1,8 +1,8 @@
 <template>
-  <div class="flex flex-col md:flex-row h-[min(90vh,580px)] md:h-[672px] max-h-[90vh]">
+  <div class="flex flex-col md:flex-row h-[min(90vh,580px)] md:h-[672px] max-h-[90vh] overflow-hidden">
     <!-- Tab Sidebar -->
     <div
-      class="md:w-[221px] overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-[var(--border-main)] pb-2 md:pb-0 relative">
+      class="md:w-[221px] overflow-x-auto md:overflow-x-visible border-b md:border-b-0 md:border-r border-[var(--glass-border)] pb-2 md:pb-0 relative bg-[var(--glass-surface-soft)]">
       <div class="items-center hidden px-5 pt-5 pb-3 md:flex">
         <div class="flex">
           <Bot :size="30" />
@@ -22,9 +22,9 @@
               :key="tab.id"
               @click="setActiveTab(tab.id)"
               :class="[
-                'flex px-1 py-2 items-center text-[14px] leading-5 text-[var(--text-primary)] max-md:whitespace-nowrap md:h-8 md:gap-2 md:self-stretch md:px-4 md:rounded-lg hover:bg-[var(--fill-tsp-white-main)]',
+                'flex px-1 py-2 items-center text-[14px] leading-5 text-[var(--text-primary)] max-md:whitespace-nowrap md:h-8 md:gap-2 md:self-stretch md:px-4 md:rounded-lg hover:bg-[var(--glass-surface-soft)]',
                 {
-                  'md:bg-[var(--fill-tsp-white-main)] font-medium max-md:border-b-[2px] max-md:border-[var(--Button-primray-black)]': activeTab === tab.id
+                  'md:bg-[var(--glass-surface)] font-medium max-md:border-b-[2px] max-md:border-[var(--Button-primray-black)]': activeTab === tab.id
                 }
               ]">
               <span class="hidden md:block" :class="activeTab === tab.id ? 'text-[var(--icon-primary)]' : 'text-[var(--icon-secondary)]'">
@@ -43,7 +43,7 @@
     <!-- Tab Content -->
     <div class="flex flex-col items-start self-stretch flex-1 overflow-hidden">
       <div
-        class="gap-1 items-center px-6 py-5 hidden md:flex self-stretch border-b border-[var(--border-main)]">
+        class="gap-1 items-center px-6 py-5 hidden md:flex self-stretch border-b border-[var(--glass-border)] bg-[var(--glass-surface-soft)]">
         <!-- Show back button for sub-pages -->
         <ChevronLeft
           v-if="currentSubPage"
@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Bot, ChevronLeft } from 'lucide-vue-next'
 import ManusLogoTextIcon from '@/components/icons/ManusLogoTextIcon.vue'
@@ -146,5 +146,11 @@ const handleBack = () => {
 // Expose active tab for parent component
 defineExpose({
   activeTab
+})
+
+watch(() => props.defaultTab, (tabId) => {
+  if (tabId) {
+    activeTab.value = tabId
+  }
 })
 </script>

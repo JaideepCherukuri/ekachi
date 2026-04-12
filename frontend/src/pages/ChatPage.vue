@@ -1,8 +1,8 @@
 <template>
   <SimpleBar ref="simpleBarRef" @scroll="handleScroll">
-    <div ref="chatContainerRef" class="relative flex flex-col h-full flex-1 min-w-0 px-3 sm:px-5">
-      <div ref="observerRef"
-        class="sm:min-w-[390px] flex flex-row items-center justify-between pt-3 pb-1 gap-1 sticky top-0 z-10 bg-[var(--background-gray-main)] flex-shrink-0">
+    <div class="relative flex flex-col h-full flex-1 min-w-0 px-3 sm:px-5">
+      <div
+        class="ek-sticky-glass sm:min-w-[390px] flex flex-row items-center justify-between pt-3 pb-2 gap-1 sticky top-0 z-10 flex-shrink-0">
         <div class="flex items-center flex-1">
           <div class="relative flex items-center">
             <div @click="toggleLeftPanel" v-if="!isLeftPanelShow"
@@ -94,12 +94,260 @@
               </button>
             </div>
           </div>
-          <div class="w-full flex justify-between items-center">
+          <div class="w-full flex justify-between items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--glass-border-strong)] bg-[var(--glass-surface-soft)] text-xs text-[var(--text-secondary)]">
+                <span class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: currentProject.color }"></span>
+                <span>{{ currentProject.name }}</span>
+              </span>
+              <span class="text-xs text-[var(--text-tertiary)]">
+                Workspace
+              </span>
+            </div>
+            <div class="flex items-center gap-1 rounded-full border border-[var(--glass-border-strong)] bg-[var(--glass-surface-soft)] p-1">
+              <button
+                v-for="tab in workspaceTabs"
+                :key="tab.id"
+                @click="handleWorkspaceChange(tab.id)"
+                class="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                :class="workspaceView === tab.id
+                  ? 'bg-[var(--Button-primary-black)] text-[var(--text-onblack)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--glass-surface)]'"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
           </div>
         </div>
         <div class="flex-1"></div>
       </div>
       <div class="mx-auto w-full max-w-full sm:max-w-[768px] sm:min-w-[390px] flex flex-col flex-1">
+        <div
+          v-if="workspaceView !== 'chat'"
+          class="ek-glass-card rounded-[20px] p-4 mb-3"
+        >
+          <template v-if="workspaceView === 'plan'">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-base font-semibold text-[var(--text-primary)]">Plan Workspace</div>
+                <div class="text-sm text-[var(--text-secondary)] mt-1">
+                  {{ completedPlanSteps }} of {{ totalPlanSteps }} steps completed.
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2 mt-4">
+              <div
+                v-for="step in plan?.steps || []"
+                :key="step.id"
+                class="flex items-center gap-3 rounded-[14px] px-3 py-2 border border-[var(--glass-border)] bg-[var(--glass-surface-soft)]"
+              >
+                <span
+                  class="w-2.5 h-2.5 rounded-full"
+                  :class="step.status === 'completed'
+                    ? 'bg-[var(--function-success)]'
+                    : step.status === 'running'
+                      ? 'bg-[var(--text-brand)]'
+                      : step.status === 'failed'
+                        ? 'bg-[var(--function-error)]'
+                        : 'bg-[var(--text-disable)]'"
+                />
+                <span class="text-sm text-[var(--text-primary)]">{{ step.description }}</span>
+              </div>
+              <div v-if="!plan || plan.steps.length === 0" class="text-sm text-[var(--text-tertiary)]">
+                No plan has been emitted for this session yet.
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="workspaceView === 'workflow'">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-base font-semibold text-[var(--text-primary)]">Workflow Workspace</div>
+                <div class="text-sm text-[var(--text-secondary)] mt-1">
+                  Execution timeline across messages, steps, and tools.
+                </div>
+              </div>
+              <div class="text-xs text-[var(--text-tertiary)]">
+                {{ workflowItems.length }} events
+              </div>
+            </div>
+            <div class="flex flex-col gap-2 mt-4">
+              <div
+                v-for="item in workflowItems"
+                :key="item.id"
+                class="rounded-[14px] px-3 py-3 border border-[var(--glass-border)] bg-[var(--glass-surface-soft)]"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span
+                      class="w-2.5 h-2.5 rounded-full shrink-0"
+                      :class="item.tone"
+                    />
+                    <span class="text-sm font-medium text-[var(--text-primary)]">{{ item.title }}</span>
+                  </div>
+                  <span class="text-[11px] text-[var(--text-tertiary)] uppercase tracking-[0.08em]">{{ item.kind }}</span>
+                </div>
+                <div class="text-sm text-[var(--text-secondary)] mt-2 break-words">
+                  {{ item.description }}
+                </div>
+              </div>
+              <div v-if="workflowItems.length === 0" class="text-sm text-[var(--text-tertiary)]">
+                No execution activity has been recorded in this session yet.
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="workspaceView === 'workers'">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-base font-semibold text-[var(--text-primary)]">Workers Workspace</div>
+                <div class="text-sm text-[var(--text-secondary)] mt-1">
+                  Specialist views derived from the current session runtime.
+                </div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+              <div
+                v-for="worker in workerCards"
+                :key="worker.id"
+                class="rounded-[18px] px-4 py-4 border border-[var(--glass-border)] bg-[var(--glass-surface-soft)]"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="text-sm font-semibold text-[var(--text-primary)]">{{ worker.name }}</div>
+                    <div class="text-sm text-[var(--text-secondary)] mt-1">{{ worker.description }}</div>
+                  </div>
+                  <span
+                    class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-medium border"
+                    :class="worker.statusClass"
+                  >
+                    <span class="w-2 h-2 rounded-full" :class="worker.dotClass" />
+                    {{ worker.status }}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-4">
+                  <div class="rounded-[14px] bg-[var(--glass-surface)] px-3 py-2">
+                    <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Activity</div>
+                    <div class="text-lg font-semibold text-[var(--text-primary)] mt-1">{{ worker.activityCount }}</div>
+                  </div>
+                  <div class="rounded-[14px] bg-[var(--glass-surface)] px-3 py-2">
+                    <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Latest</div>
+                    <div class="text-sm font-medium text-[var(--text-primary)] mt-1 truncate">{{ worker.latestLabel }}</div>
+                  </div>
+                </div>
+                <button
+                  v-if="worker.lastTool"
+                  @click="handleToolClick(worker.lastTool)"
+                  class="mt-4 px-3 py-2 rounded-[12px] border border-[var(--glass-border-strong)] text-[var(--text-primary)] text-sm font-medium hover:bg-[var(--glass-surface)]"
+                >
+                  Open Latest Tool
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="workspaceView === 'files'">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div class="text-base font-semibold text-[var(--text-primary)]">Files Workspace</div>
+                <div class="text-sm text-[var(--text-secondary)] mt-1">
+                  Session files and generated artifacts for this run.
+                </div>
+              </div>
+              <button
+                @click="showSessionFileList()"
+                class="px-3 py-2 rounded-[12px] bg-[var(--Button-primary-black)] text-[var(--text-onblack)] text-sm font-medium hover:opacity-90"
+              >
+                Open File Browser
+              </button>
+            </div>
+            <div class="flex flex-col gap-2 mt-4">
+              <div
+                v-for="file in sessionFiles"
+                :key="file.file_id"
+                class="flex items-center justify-between gap-3 rounded-[14px] px-3 py-2 border border-[var(--glass-border)] bg-[var(--glass-surface-soft)]"
+              >
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-[var(--text-primary)] truncate">{{ file.filename }}</div>
+                  <div class="text-xs text-[var(--text-tertiary)]">{{ file.content_type || 'File' }}</div>
+                </div>
+              </div>
+              <div v-if="sessionFiles.length === 0" class="text-sm text-[var(--text-tertiary)]">
+                No session files available yet.
+              </div>
+            </div>
+          </template>
+
+          <template v-else-if="workspaceView === 'browser'">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div class="text-base font-semibold text-[var(--text-primary)]">Browser Workspace</div>
+                <div class="text-sm text-[var(--text-secondary)] mt-1">
+                  Live browser context and most recent browser tool activity.
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  @click="openBrowserWorkspace"
+                  :disabled="!browserTool"
+                  class="px-3 py-2 rounded-[12px] bg-[var(--Button-primary-black)] text-[var(--text-onblack)] text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                >
+                  Open Browser
+                </button>
+                <button
+                  @click="triggerTakeOver"
+                  :disabled="!browserTool"
+                  class="px-3 py-2 rounded-[12px] border border-[var(--glass-border-strong)] text-[var(--text-primary)] text-sm font-medium hover:bg-[var(--glass-surface-soft)] disabled:opacity-50"
+                >
+                  Take Over
+                </button>
+              </div>
+            </div>
+            <div class="mt-4 rounded-[14px] border border-[var(--glass-border)] bg-[var(--glass-surface-soft)] px-4 py-3">
+              <div v-if="browserTool" class="flex flex-col gap-1">
+                <div class="text-sm font-medium text-[var(--text-primary)]">{{ browserTool.function }}</div>
+                <div class="text-sm text-[var(--text-secondary)] break-all">
+                  {{ browserTool.args?.url || browserTool.args?.page || browserTool.args?.element || 'Browser interaction available in tool panel' }}
+                </div>
+              </div>
+              <div v-else class="text-sm text-[var(--text-tertiary)]">
+                No browser activity has been recorded in this session yet.
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+              <div class="rounded-[14px] border border-[var(--glass-border)] bg-[var(--glass-surface-soft)] px-4 py-3">
+                <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Engine</div>
+                <div class="text-sm font-medium text-[var(--text-primary)] mt-2">
+                  {{ sessionBrowserProfile.engine || 'System default' }}
+                </div>
+              </div>
+              <div class="rounded-[14px] border border-[var(--glass-border)] bg-[var(--glass-surface-soft)] px-4 py-3">
+                <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">CDP Endpoint</div>
+                <div class="text-sm font-medium text-[var(--text-primary)] mt-2 break-all">
+                  {{ sessionBrowserProfile.cdpUrl || 'Sandbox managed browser' }}
+                </div>
+              </div>
+              <div class="rounded-[14px] border border-[var(--glass-border)] bg-[var(--glass-surface-soft)] px-4 py-3">
+                <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Cookie Profile</div>
+                <div class="text-sm font-medium text-[var(--text-primary)] mt-2">
+                  {{ sessionBrowserProfile.cookieProfile ? 'Configured' : 'Not configured' }}
+                </div>
+              </div>
+              <div class="rounded-[14px] border border-[var(--glass-border)] bg-[var(--glass-surface-soft)] px-4 py-3">
+                <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Extensions</div>
+                <div class="text-sm font-medium text-[var(--text-primary)] mt-2">
+                  {{ sessionBrowserProfile.extensionPaths.length }} configured
+                </div>
+              </div>
+              <div class="rounded-[14px] border border-[var(--glass-border)] bg-[var(--glass-surface-soft)] px-4 py-3">
+                <div class="text-[11px] uppercase tracking-[0.08em] text-[var(--text-tertiary)]">Cookie Jar</div>
+                <div class="text-sm font-medium text-[var(--text-primary)] mt-2">
+                  {{ sessionBrowserProfile.cookieCount }} persisted
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
         <div class="flex flex-col w-full gap-[12px] pb-[80px] pt-[12px] flex-1 overflow-y-auto">
           <ChatMessage v-for="(message, index) in messages" :key="index" :message="message"
             :hideHeader="isConsecutiveAssistant(messages, index)"
@@ -109,9 +357,9 @@
           <LoadingIndicator v-if="isLoading" :text="$t('Thinking')" />
         </div>
 
-        <div class="flex flex-col bg-[var(--background-gray-main)] sticky bottom-0">
+        <div class="ek-sticky-glass flex flex-col sticky bottom-0 pb-1">
           <button @click="handleFollow" v-if="!follow"
-            class="flex items-center justify-center w-[36px] h-[36px] rounded-full bg-[var(--background-white-main)] hover:bg-[var(--background-gray-main)] clickable border border-[var(--border-main)] shadow-[0px_5px_16px_0px_var(--shadow-S),0px_0px_1.25px_0px_var(--shadow-S)] absolute -top-20 left-1/2 -translate-x-1/2">
+            class="ek-glass-card flex items-center justify-center w-[36px] h-[36px] rounded-full clickable absolute -top-20 left-1/2 -translate-x-1/2">
             <ArrowDown class="text-[var(--icon-primary)]" :size="20" />
           </button>
           <PlanPanel v-if="plan && plan.steps.length > 0" :plan="plan" />
@@ -128,7 +376,7 @@
 
 <script setup lang="ts">
 import SimpleBar from '../components/SimpleBar.vue';
-import { ref, onMounted, watch, nextTick, onUnmounted, reactive, toRefs } from 'vue';
+import { ref, onMounted, watch, nextTick, onUnmounted, reactive, toRefs, computed } from 'vue';
 import { useRouter, onBeforeRouteUpdate } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import ChatBox from '../components/ChatBox.vue';
@@ -155,14 +403,19 @@ import { useSessionFileList } from '../composables/useSessionFileList'
 import { useFilePanel } from '../composables/useFilePanel'
 import { copyToClipboard } from '../utils/dom'
 import { SessionStatus } from '../types/response';
+import type { WorkerResponse } from '../types/response';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import LoadingIndicator from '@/components/ui/LoadingIndicator.vue';
+import type { ProjectItem } from '@/composables/useProjects';
+import { useProjects } from '@/composables/useProjects';
+import { getWorkers } from '@/api/capabilities';
 
 const router = useRouter()
 const { t } = useI18n()
 const { toggleLeftPanel, isLeftPanelShow } = useLeftPanel()
 const { showSessionFileList } = useSessionFileList()
 const { hideFilePanel } = useFilePanel()
+const { getProjectForSession, syncSession } = useProjects()
 
 // Create initial state factory
 const createInitialState = () => ({
@@ -213,8 +466,263 @@ const {
 // Non-state refs that don't need reset
 const toolPanel = ref<InstanceType<typeof ToolPanel>>()
 const simpleBarRef = ref<InstanceType<typeof SimpleBar>>();
-const observerRef = ref<HTMLDivElement>();
-const chatContainerRef = ref<HTMLDivElement>();
+type WorkspaceView = 'chat' | 'plan' | 'workflow' | 'workers' | 'files' | 'browser'
+
+const workspaceView = ref<WorkspaceView>('chat')
+const sessionFiles = ref<FileInfo[]>([])
+const sessionProjectMeta = ref<ProjectItem | null>(null)
+const configuredWorkers = ref<WorkerResponse[]>([])
+const sessionBrowserProfile = ref({
+  engine: null as string | null,
+  cdpUrl: null as string | null,
+  cookieProfile: null as string | null,
+  extensionPaths: [] as string[],
+  cookieCount: 0,
+})
+
+const workspaceTabs = [
+  { id: 'chat' as const, label: 'Chat' },
+  { id: 'plan' as const, label: 'Plan' },
+  { id: 'workflow' as const, label: 'Workflow' },
+  { id: 'workers' as const, label: 'Workers' },
+  { id: 'files' as const, label: 'Files' },
+  { id: 'browser' as const, label: 'Browser' },
+]
+
+const currentProject = computed(() => {
+  if (sessionProjectMeta.value) {
+    return sessionProjectMeta.value
+  }
+  return getProjectForSession(sessionId.value || '')
+})
+const totalPlanSteps = computed(() => plan.value?.steps.length || 0)
+const completedPlanSteps = computed(() => plan.value?.steps.filter((step) => step.status === 'completed').length || 0)
+const browserTool = computed(() => {
+  const tools = messages.value.filter((message) => message.type === 'tool')
+  const lastBrowserTool = [...tools].reverse().find((message) => (message.content as ToolContent).name === 'browser')
+  return lastBrowserTool?.content as ToolContent | undefined
+})
+
+const workflowItems = computed(() => {
+  return messages.value.map((message, index) => {
+    if (message.type === 'step') {
+      const step = message.content as StepContent
+      return {
+        id: `step-${index}-${step.id}`,
+        kind: 'step',
+        title: step.description,
+        description: `Step ${step.status}`,
+        tone: step.status === 'completed'
+          ? 'bg-[var(--function-success)]'
+          : step.status === 'failed'
+            ? 'bg-[var(--function-error)]'
+            : 'bg-[var(--text-brand)]',
+      }
+    }
+    if (message.type === 'tool') {
+      const tool = message.content as ToolContent
+      return {
+        id: `tool-${index}-${tool.tool_call_id}`,
+        kind: 'tool',
+        title: `${tool.name} tool`,
+        description: tool.args?.url || tool.args?.command || tool.args?.file || tool.function || tool.status,
+        tone: tool.status === 'called' ? 'bg-[var(--function-success)]' : 'bg-[var(--text-brand)]',
+      }
+    }
+    if (message.type === 'user' || message.type === 'assistant') {
+      const content = message.content as MessageContent
+      return {
+        id: `message-${index}-${message.type}`,
+        kind: message.type,
+        title: message.type === 'user' ? 'User message' : 'Assistant response',
+        description: content.content,
+        tone: message.type === 'user' ? 'bg-[var(--text-brand)]' : 'bg-[var(--text-primary)]',
+      }
+    }
+    if (message.type === 'attachments') {
+      const content = message.content as AttachmentsContent
+      return {
+        id: `attachments-${index}`,
+        kind: 'files',
+        title: 'Attachments',
+        description: `${content.attachments.length} file attachment${content.attachments.length === 1 ? '' : 's'}`,
+        tone: 'bg-[var(--function-warning)]',
+      }
+    }
+    return {
+      id: `activity-${index}`,
+      kind: message.type,
+      title: message.type,
+      description: '',
+      tone: 'bg-[var(--text-tertiary)]',
+    }
+  })
+})
+
+const roleToolDefaults: Record<string, string[]> = {
+  coordinator: [],
+  research: ['search'],
+  developer: ['shell', 'file'],
+  browser: ['browser'],
+  document: ['file'],
+  automation: ['browser', 'shell', 'file'],
+  custom: [],
+}
+
+const roleDescriptions: Record<string, string> = {
+  coordinator: 'Owns plan generation, orchestration, and final responses.',
+  research: 'Handles evidence gathering and source validation.',
+  developer: 'Handles shell execution, file operations, and implementation work.',
+  browser: 'Handles browsing, navigation, and interactive page work.',
+  document: 'Handles artifacts, structured outputs, and document workflows.',
+  automation: 'Handles recurring operations, scheduled actions, and runtime follow-through.',
+  custom: 'Custom worker instructions for this project.',
+}
+
+const workerCards = computed(() => {
+  const toolMessages = messages.value
+    .filter((message) => message.type === 'tool')
+    .map((message) => message.content as ToolContent)
+  const latestPlanStep = plan.value?.steps[plan.value.steps.length - 1]
+
+  const workerDefinitions = configuredWorkers.value.length > 0
+    ? configuredWorkers.value.map((worker) => ({
+        id: worker.worker_id,
+        name: worker.name,
+        description: worker.description || roleDescriptions[worker.role] || roleDescriptions.custom,
+        role: worker.role,
+        lane: worker.lane,
+        tools: worker.tool_names.length > 0 ? worker.tool_names : (roleToolDefaults[worker.role] || []),
+        activityCount: 0,
+        latestLabel: worker.instructions,
+        status: worker.enabled ? 'Ready' : 'Disabled',
+        lastTool: undefined as ToolContent | undefined,
+        enabled: worker.enabled,
+      }))
+    : [
+        {
+          id: 'coordinator',
+          name: 'Coordinator',
+          description: roleDescriptions.coordinator,
+          role: 'coordinator',
+          lane: 'intake',
+          tools: [] as string[],
+          activityCount: (plan.value?.steps.length || 0) + messages.value.filter((message) => message.type === 'assistant').length,
+          latestLabel: latestPlanStep?.description || 'No plan activity yet',
+          status: isLoading.value ? 'Active' : totalPlanSteps.value > 0 ? 'Ready' : 'Idle',
+          lastTool: undefined as ToolContent | undefined,
+          enabled: true,
+        },
+        {
+          id: 'research',
+          name: 'Research Worker',
+          description: roleDescriptions.research,
+          role: 'research',
+          lane: 'research',
+          tools: ['search'],
+          enabled: true,
+        },
+        {
+          id: 'developer',
+          name: 'Developer Worker',
+          description: roleDescriptions.developer,
+          role: 'developer',
+          lane: 'execution',
+          tools: ['shell', 'file'],
+          enabled: true,
+        },
+        {
+          id: 'browser',
+          name: 'Browser Worker',
+          description: roleDescriptions.browser,
+          role: 'browser',
+          lane: 'execution',
+          tools: ['browser'],
+          enabled: true,
+        },
+      ]
+
+  return workerDefinitions.map((worker) => {
+    if (worker.role === 'coordinator') {
+      return {
+        ...worker,
+        statusClass: worker.status === 'Active'
+          ? 'border-[var(--glass-border-strong)] text-[var(--text-primary)]'
+          : worker.status === 'Disabled'
+            ? 'border-[var(--glass-border)] text-[var(--text-tertiary)]'
+          : 'border-[var(--glass-border)] text-[var(--text-secondary)]',
+        dotClass: worker.status === 'Active'
+          ? 'bg-[var(--text-brand)]'
+          : worker.status === 'Disabled'
+            ? 'bg-[var(--text-disable)]'
+            : 'bg-[var(--function-success)]',
+      }
+    }
+
+    const matchingTools = toolMessages.filter((tool) => worker.tools.includes(tool.name))
+    const lastTool = matchingTools[matchingTools.length - 1]
+    const status = !worker.enabled
+      ? 'Disabled'
+      : matchingTools.length > 0
+        ? (lastTool?.status === 'calling' ? 'Active' : 'Ready')
+        : 'Idle'
+    return {
+      ...worker,
+      activityCount: matchingTools.length,
+      latestLabel: lastTool?.function || lastTool?.name || 'No activity yet',
+      status,
+      lastTool,
+      statusClass: status === 'Active'
+        ? 'border-[var(--glass-border-strong)] text-[var(--text-primary)]'
+        : status === 'Ready'
+          ? 'border-[var(--glass-border)] text-[var(--text-secondary)]'
+          : status === 'Disabled'
+            ? 'border-[var(--glass-border)] text-[var(--text-tertiary)]'
+          : 'border-[var(--glass-border)] text-[var(--text-tertiary)]',
+      dotClass: status === 'Active'
+        ? 'bg-[var(--text-brand)]'
+        : status === 'Ready'
+          ? 'bg-[var(--function-success)]'
+          : 'bg-[var(--text-disable)]',
+    }
+  })
+})
+
+const loadSessionFiles = async () => {
+  if (!sessionId.value) return
+  try {
+    sessionFiles.value = await agentApi.getSessionFiles(sessionId.value)
+  } catch (error) {
+    console.error('Failed to load session files:', error)
+    sessionFiles.value = []
+  }
+}
+
+const openBrowserWorkspace = () => {
+  if (!browserTool.value) return
+  toolPanel.value?.showToolPanel(browserTool.value, true)
+}
+
+const triggerTakeOver = () => {
+  if (!sessionId.value || !browserTool.value) return
+  openBrowserWorkspace()
+  window.dispatchEvent(new CustomEvent('takeover', {
+    detail: {
+      sessionId: sessionId.value,
+      active: true,
+    }
+  }))
+}
+
+const handleWorkspaceChange = (workspace: WorkspaceView) => {
+  workspaceView.value = workspace
+  if (workspace === 'files') {
+    loadSessionFiles()
+  }
+  if (workspace === 'browser') {
+    openBrowserWorkspace()
+  }
+}
 
 // Reset all refs to their initial values
 const resetState = () => {
@@ -225,7 +733,28 @@ const resetState = () => {
 
   // Reset reactive state to initial values
   Object.assign(state, createInitialState());
+  workspaceView.value = 'chat'
+  sessionFiles.value = []
+  sessionProjectMeta.value = null
+  configuredWorkers.value = []
+  sessionBrowserProfile.value = {
+    engine: null,
+    cdpUrl: null,
+    cookieProfile: null,
+    extensionPaths: [],
+    cookieCount: 0,
+  }
 };
+
+const loadConfiguredWorkers = async (projectId?: string | null) => {
+  try {
+    const response = await getWorkers(projectId ?? undefined)
+    configuredWorkers.value = response.workers
+  } catch (error) {
+    console.error('Failed to load configured workers:', error)
+    configuredWorkers.value = []
+  }
+}
 
 // Watch message changes and automatically scroll to bottom
 watch(messages, async () => {
@@ -415,6 +944,7 @@ const chat = async (message: string = '', files: FileInfo[] = []) => {
         onClose: () => {
           console.log('Chat closed');
           isLoading.value = false;
+          loadSessionFiles();
           // Clear the cancel function when connection is closed normally
           if (cancelCurrentChat.value) {
             cancelCurrentChat.value = null;
@@ -443,6 +973,26 @@ const restoreSession = async () => {
     return;
   }
   const session = await agentApi.getSession(sessionId.value);
+  syncSession({
+    session_id: session.session_id,
+    project_id: session.project_id,
+    project_name: session.project_name,
+    project_color: session.project_color,
+  })
+  sessionProjectMeta.value = {
+    id: session.project_id || getProjectForSession(session.session_id).id,
+    name: session.project_name || getProjectForSession(session.session_id).name,
+    color: session.project_color || getProjectForSession(session.session_id).color,
+    created_at: 0,
+    system: !session.project_id,
+  }
+  sessionBrowserProfile.value = {
+    engine: session.browser_engine || null,
+    cdpUrl: session.browser_cdp_url || null,
+    cookieProfile: session.browser_cookie_profile || null,
+    extensionPaths: session.browser_extension_paths || [],
+    cookieCount: session.browser_cookies?.length || 0,
+  }
   // Initialize share mode based on session state
   shareMode.value = session.is_shared ? 'public' : 'private';
   realTime.value = false;
@@ -453,6 +1003,8 @@ const restoreSession = async () => {
   if (session.status === SessionStatus.RUNNING || session.status === SessionStatus.PENDING) {
     await chat();
   }
+  await loadConfiguredWorkers(session.project_id || null)
+  await loadSessionFiles();
   agentApi.clearUnreadMessageCount(sessionId.value);
 }
 

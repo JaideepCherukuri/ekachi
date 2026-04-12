@@ -3,7 +3,7 @@
         <div class="min-w-max inline-block transition-[transform,opacity,scale] duration-150" tabindex="-1"
             role="dialog">
             <div
-                class="flex w-[min(300px,calc(100vw-24px))] flex-col bg-[var(--background-menu-white)] rounded-[20px] border-[0.5px] border-[var(--border-dark)] shadow-[0px_8px_32px_0px_var(--shadow-XS)]">
+                class="ek-glass-card flex w-[min(320px,calc(100vw-24px))] flex-col rounded-[20px] border-[0.5px] border-[var(--glass-border-strong)]">
                 <div class="flex gap-2 px-4 pt-5 pb-3 w-full">
                     <div class="relative flex items-center justify-center font-bold cursor-pointer flex-shrink-0">
                         <div class="relative flex items-center justify-center font-bold flex-shrink-0 rounded-full overflow-hidden"
@@ -41,6 +41,33 @@
                                 class="overflow-hidden flex-1 text-sm font-medium leading-5 whitespace-nowrap text-ellipsis">{{
                                 t('Settings') }}</span>
                         </div>
+                        <div
+                            class="flex gap-3 items-center p-2 rounded-lg cursor-pointer text-[var(--text-primary)] hover:bg-[var(--fill-tsp-white-main)]"
+                            @click="handleModelsClick">
+                            <div class="flex-shrink-0 w-5 h-5">
+                                <Workflow :size="20" />
+                            </div>
+                            <span
+                                class="overflow-hidden flex-1 text-sm font-medium leading-5 whitespace-nowrap text-ellipsis">Models</span>
+                        </div>
+                        <div
+                            class="flex gap-3 items-center p-2 rounded-lg cursor-pointer text-[var(--text-primary)] hover:bg-[var(--fill-tsp-white-main)]"
+                            @click="handleControlCenterClick">
+                            <div class="flex-shrink-0 w-5 h-5">
+                                <LayoutGrid :size="20" />
+                            </div>
+                            <span
+                                class="overflow-hidden flex-1 text-sm font-medium leading-5 whitespace-nowrap text-ellipsis">Control Center</span>
+                        </div>
+                        <div
+                            class="flex gap-3 items-center p-2 rounded-lg cursor-pointer text-[var(--text-primary)] hover:bg-[var(--fill-tsp-white-main)]"
+                            @click="handleIntegrationsClick">
+                            <div class="flex-shrink-0 w-5 h-5">
+                                <Blocks :size="20" />
+                            </div>
+                            <span
+                                class="overflow-hidden flex-1 text-sm font-medium leading-5 whitespace-nowrap text-ellipsis">Integrations</span>
+                        </div>
                         <div class="w-full h-[1px] my-1 bg-[var(--border-main)]"></div>
                         <div v-if="authProvider !== 'none'"
                             class="flex gap-3 items-center p-2 rounded-lg cursor-pointer hover:bg-[var(--fill-tsp-white-main)] text-[var(--function-error)]"
@@ -66,7 +93,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuth } from '../composables/useAuth';
 import { useSettingsDialog } from '../composables/useSettingsDialog';
 import { getCachedAuthProvider } from '../api/config';
-import { LogOut, User, Settings2 } from 'lucide-vue-next';
+import { Blocks, LayoutGrid, LogOut, Settings2, User, Workflow } from 'lucide-vue-next';
 
 const router = useRouter();
 const { t } = useI18n();
@@ -87,6 +114,18 @@ const handleAccountClick = () => {
 // Handle Settings click - open settings dialog with settings tab
 const handleSettingsClick = () => {
     openSettingsDialog('settings');
+};
+
+const handleModelsClick = () => {
+    openSettingsDialog('models');
+};
+
+const handleControlCenterClick = () => {
+    router.push('/chat/control');
+};
+
+const handleIntegrationsClick = () => {
+    openSettingsDialog('integrations');
 };
 
 // Handle logout action

@@ -204,6 +204,41 @@ class AuthService:
             access_token=new_access_token,
             token_type="bearer"
         )
+
+    async def _get_or_create_settings_user(self, current_user: User) -> User:
+        """Resolve the persisted user for settings mutations.
+
+        Non-password auth modes use synthetic users during request auth, so
+        create a lightweight record on first settings write/read when needed.
+        """
+        persisted_user = await self.user_repository.get_user_by_id(current_user.id)
+        if persisted_user:
+            return persisted_user
+
+        if self.settings.auth_provider == "password":
+            raise ValidationError("User not found")
+
+        synthetic_user = User(
+            id=current_user.id,
+            fullname=current_user.fullname,
+            email=current_user.email,
+            role=current_user.role,
+            is_active=current_user.is_active,
+            last_login_at=current_user.last_login_at,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        return await self.user_repository.create_user(synthetic_user)
+
+    async def get_privacy_settings(self, current_user: User) -> User:
+        """Return the persisted privacy settings for the current user."""
+        return await self._get_or_create_settings_user(current_user)
+
+    async def update_privacy_settings(self, current_user: User, help_improve: bool) -> User:
+        """Update the current user's privacy preferences."""
+        user = await self._get_or_create_settings_user(current_user)
+        user.set_help_improve(help_improve)
+        return await self.user_repository.update_user(user)
     
     async def verify_token(self, token: str) -> Optional[User]:
         """Verify JWT token and return user"""

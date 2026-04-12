@@ -1,8 +1,8 @@
 <template>
-  <div className="h-screen flex overflow-hidden bg-white">
+  <div class="ek-app-shell h-screen flex overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3">
     <LeftPanel />
-    <div className="flex-1 min-w-0 h-full py-0 pr-0 relative">
-      <div className="flex h-full bg-[var(--background-gray-main)]">
+    <div class="flex-1 min-w-0 h-full py-0 pr-0 relative">
+      <div class="ek-glass-soft flex h-full rounded-[28px] overflow-hidden">
         <div class="flex flex-1 min-w-0 min-h-0">
           <router-view />
           <FilePanel />

@@ -18,6 +18,18 @@ SESSION_LIST_PROJECTION = {
     "latest_message_at": 1,
     "status": 1,
     "is_shared": 1,
+    "project_id": 1,
+    "project_name": 1,
+    "project_color": 1,
+    "provider_id": 1,
+    "provider_label": 1,
+    "model_name": 1,
+    "search_provider": 1,
+    "browser_engine": 1,
+    "browser_cdp_url": 1,
+    "browser_cookie_profile": 1,
+    "browser_extension_paths": 1,
+    "browser_cookies": 1,
 }
 
 class MongoSessionRepository(SessionRepository):
@@ -71,6 +83,18 @@ class MongoSessionRepository(SessionRepository):
                 latest_message_at=doc.get("latest_message_at"),
                 status=doc.get("status", SessionStatus.PENDING),
                 is_shared=doc.get("is_shared", False),
+                project_id=doc.get("project_id"),
+                project_name=doc.get("project_name"),
+                project_color=doc.get("project_color"),
+                provider_id=doc.get("provider_id"),
+                provider_label=doc.get("provider_label"),
+                model_name=doc.get("model_name"),
+                search_provider=doc.get("search_provider"),
+                browser_engine=doc.get("browser_engine"),
+                browser_cdp_url=doc.get("browser_cdp_url"),
+                browser_cookie_profile=doc.get("browser_cookie_profile"),
+                browser_extension_paths=doc.get("browser_extension_paths") or [],
+                browser_cookies=doc.get("browser_cookies") or [],
             ))
         return summaries
     
@@ -209,3 +233,60 @@ class MongoSessionRepository(SessionRepository):
         if not result:
             raise ValueError(f"Session {session_id} not found")
 
+    async def update_project(
+        self,
+        session_id: str,
+        project_id: str | None,
+        project_name: str | None,
+        project_color: str | None,
+    ) -> None:
+        """Update the project metadata of a session"""
+        result = await SessionDocument.find_one(
+            SessionDocument.session_id == session_id
+        ).update(
+            {
+                "$set": {
+                    "project_id": project_id,
+                    "project_name": project_name,
+                    "project_color": project_color,
+                    "updated_at": datetime.now(UTC),
+                }
+            }
+        )
+        if not result:
+            raise ValueError(f"Session {session_id} not found")
+
+    async def update_project_for_user_sessions(
+        self,
+        user_id: str,
+        project_id: str,
+        project_name: str,
+        project_color: str,
+    ) -> None:
+        """Update project metadata for all sessions in a user's project"""
+        collection = SessionDocument.get_pymongo_collection()
+        await collection.update_many(
+            {"user_id": user_id, "project_id": project_id},
+            {
+                "$set": {
+                    "project_name": project_name,
+                    "project_color": project_color,
+                    "updated_at": datetime.now(UTC),
+                }
+            },
+        )
+
+    async def clear_project_for_user_sessions(self, user_id: str, project_id: str) -> None:
+        """Clear project metadata for all sessions in a user's project"""
+        collection = SessionDocument.get_pymongo_collection()
+        await collection.update_many(
+            {"user_id": user_id, "project_id": project_id},
+            {
+                "$set": {
+                    "project_id": None,
+                    "project_name": None,
+                    "project_color": None,
+                    "updated_at": datetime.now(UTC),
+                }
+            },
+        )

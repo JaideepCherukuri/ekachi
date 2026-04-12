@@ -4,6 +4,8 @@ export * from './auth';
 export * from './config';
 export * from './agent';
 export * from './file';
+export * from './mcp';
+export * from './user';
 
 // Export commonly used types and functions
 export type { ApiResponse, ApiError } from './client';

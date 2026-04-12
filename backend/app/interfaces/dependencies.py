@@ -5,7 +5,7 @@ from fastapi import Request, Header, HTTPException, status, Depends, Query
 from starlette.websockets import WebSocket
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.infrastructure.external.file.gridfsfile import get_file_storage
-from app.infrastructure.external.search import get_search_engine
+from app.infrastructure.external.search import get_search_engine, create_search_engine
 from app.domain.models.user import User, UserRole
 from app.application.errors.exceptions import UnauthorizedError
 from app.core.config import get_settings
@@ -16,6 +16,12 @@ from app.application.services.file_service import FileService
 from app.application.services.auth_service import AuthService
 from app.application.services.token_service import TokenService
 from app.application.services.email_service import EmailService
+from app.application.services.project_service import ProjectService
+from app.application.services.provider_service import ProviderService
+from app.application.services.trigger_service import TriggerService
+from app.application.services.capability_service import CapabilityService
+from app.application.services.mcp_service import MCPService
+from app.application.services.browser_service import BrowserService
 from app.infrastructure.external.cache import get_cache
 
 # Import all required dependencies for agent service
@@ -23,10 +29,15 @@ from app.infrastructure.external.sandbox.docker_sandbox import DockerSandbox
 from app.infrastructure.external.task.redis_task import RedisStreamTask
 from app.infrastructure.repositories.mongo_agent_repository import MongoAgentRepository
 from app.infrastructure.repositories.mongo_session_repository import MongoSessionRepository
+from app.infrastructure.repositories.mongo_project_repository import MongoProjectRepository
+from app.infrastructure.repositories.mongo_provider_repository import MongoProviderRepository
+from app.infrastructure.repositories.mongo_trigger_repository import MongoTriggerRepository
+from app.infrastructure.repositories.mongo_capability_repository import MongoCapabilityRepository
 from app.infrastructure.repositories.file_mcp_repository import FileMCPRepository
 from app.infrastructure.repositories.user_repository import MongoUserRepository
 from app.infrastructure.repositories.claw_repository import ClawRepository as MongoClawRepository
 from app.application.services.claw_service import ClawService
+from app.application.services.secret_cipher import SecretCipher
 from app.domain.services.claw_domain_service import ClawDomainService
 
 
@@ -35,6 +46,21 @@ logger = logging.getLogger(__name__)
 
 # Security scheme - Bearer Token only
 security_bearer = HTTPBearer(auto_error=False)
+
+@lru_cache()
+def get_secret_cipher() -> SecretCipher:
+    logger.info("Creating SecretCipher instance")
+    return SecretCipher(get_settings().jwt_secret_key)
+
+
+@lru_cache()
+def get_provider_service() -> ProviderService:
+    logger.info("Creating ProviderService instance")
+    return ProviderService(
+        provider_repository=MongoProviderRepository(),
+        secret_cipher=get_secret_cipher(),
+    )
+
 
 @lru_cache()
 def get_agent_service() -> AgentService:
@@ -64,6 +90,10 @@ def get_agent_service() -> AgentService:
         file_storage=file_storage,
         search_engine=search_engine,
         mcp_repository=mcp_repository,
+        provider_service=get_provider_service(),
+        project_repository=MongoProjectRepository(),
+        capability_repository=MongoCapabilityRepository(),
+        search_engine_factory=create_search_engine,
     )
 
 
@@ -85,6 +115,49 @@ def get_file_service() -> FileService:
         file_storage=file_storage,
         token_service=token_service,
     )
+
+
+@lru_cache()
+def get_project_service() -> ProjectService:
+    logger.info("Creating ProjectService instance")
+    return ProjectService(
+        project_repository=MongoProjectRepository(),
+        session_repository=MongoSessionRepository(),
+        trigger_repository=MongoTriggerRepository(),
+        capability_repository=MongoCapabilityRepository(),
+        provider_service=get_provider_service(),
+    )
+
+
+@lru_cache()
+def get_trigger_service() -> TriggerService:
+    logger.info("Creating TriggerService instance")
+    return TriggerService(
+        trigger_repository=MongoTriggerRepository(),
+        project_repository=MongoProjectRepository(),
+        agent_service=get_agent_service(),
+    )
+
+
+@lru_cache()
+def get_capability_service() -> CapabilityService:
+    logger.info("Creating CapabilityService instance")
+    return CapabilityService(
+        capability_repository=MongoCapabilityRepository(),
+        project_repository=MongoProjectRepository(),
+    )
+
+
+@lru_cache()
+def get_mcp_service() -> MCPService:
+    logger.info("Creating MCPService instance")
+    return MCPService(mcp_repository=FileMCPRepository())
+
+
+@lru_cache()
+def get_browser_service() -> BrowserService:
+    logger.info("Creating BrowserService instance")
+    return BrowserService(project_repository=MongoProjectRepository())
 
 
 @lru_cache()

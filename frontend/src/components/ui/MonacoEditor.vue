@@ -4,18 +4,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed } from "vue";
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-
-// Import language contributions
-import "monaco-editor/esm/vs/language/json/monaco.contribution";
-import "monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution";
-import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
-import "monaco-editor/esm/vs/basic-languages/html/html.contribution";
-import "monaco-editor/esm/vs/basic-languages/css/css.contribution";
-import "monaco-editor/esm/vs/basic-languages/python/python.contribution";
-import "monaco-editor/esm/vs/basic-languages/java/java.contribution";
-import "monaco-editor/esm/vs/basic-languages/go/go.contribution";
-import "monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution";
+import type * as Monaco from "monaco-editor/esm/vs/editor/editor.api";
 
 interface MonacoEditorProps {
   value?: string;
@@ -44,12 +33,13 @@ const props = withDefaults(defineProps<MonacoEditorProps>(), {
 });
 
 const emit = defineEmits<{
-  ready: [editor: monaco.editor.IStandaloneCodeEditor];
+  ready: [editor: Monaco.editor.IStandaloneCodeEditor];
   change: [value: string];
 }>();
 
 const monacoContainer = ref<HTMLElement | null>(null);
-let editor: monaco.editor.IStandaloneCodeEditor | null = null;
+let monaco: typeof Monaco | null = null;
+let editor: Monaco.editor.IStandaloneCodeEditor | null = null;
 
 // Language mapping based on filename or explicit language
 const languageFromFilename = (filename: string): string => {
@@ -85,12 +75,34 @@ const computedLanguage = computed(() => {
 });
 
 // Initialize Monaco editor
-const initEditor = () => {
+const loadMonaco = async () => {
+  if (monaco) {
+    return monaco;
+  }
+
+  const [editorModule] = await Promise.all([
+    import("monaco-editor/esm/vs/editor/editor.api"),
+    import("monaco-editor/esm/vs/language/json/monaco.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/html/html.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/css/css.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/python/python.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/java/java.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/go/go.contribution"),
+    import("monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution"),
+  ]);
+  monaco = editorModule as typeof Monaco;
+  return monaco;
+};
+
+const initEditor = async () => {
   if (!monacoContainer.value || editor) {
     return;
   }
 
-  editor = monaco.editor.create(monacoContainer.value, {
+  const monacoInstance = await loadMonaco();
+  editor = monacoInstance.editor.create(monacoContainer.value, {
     value: props.value,
     language: computedLanguage.value,
     theme: props.theme,
@@ -133,7 +145,7 @@ const updateContent = (newValue: string) => {
 
 // Update editor language
 const updateLanguage = (newLanguage: string) => {
-  if (editor) {
+  if (editor && monaco) {
     const model = editor.getModel();
     if (model) {
       monaco.editor.setModelLanguage(model, newLanguage);
@@ -162,7 +174,7 @@ watch(computedLanguage, (newLanguage) => {
 });
 
 onMounted(() => {
-  initEditor();
+  void initEditor();
 });
 
 onBeforeUnmount(() => {

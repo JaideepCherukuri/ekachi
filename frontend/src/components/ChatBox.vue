@@ -1,7 +1,7 @@
 <template>
-    <div class="pb-3 relative bg-[var(--background-gray-main)]">
+    <div class="pb-3 relative">
         <div
-            class="flex flex-col gap-3 rounded-[22px] transition-all relative bg-[var(--fill-input-chat)] py-3 max-h-[300px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] border border-black/8 dark:border-[var(--border-main)]">
+            class="ek-glass-card flex flex-col gap-3 rounded-[24px] transition-all relative py-3 max-h-[300px]">
             <ChatBoxFiles ref="chatBoxFileListRef" :attachments="attachments" />
             <div class="overflow-y-auto pl-3 sm:pl-4 pr-2">
                 <textarea
@@ -15,7 +15,7 @@
             <footer class="flex flex-row justify-between w-full px-3 gap-2">
                 <div class="flex gap-2 pr-2 items-center">
                     <button @click="uploadFile"
-                        class="rounded-full border border-[var(--border-main)] inline-flex items-center justify-center gap-1 clickable cursor-pointer text-xs text-[var(--text-secondary)] hover:bg-[var(--fill-tsp-gray-main)] w-8 h-8 p-0 data-[popover-trigger]:bg-[var(--fill-tsp-gray-main)] shrink-0"
+                        class="ek-glass-soft rounded-full inline-flex items-center justify-center gap-1 clickable cursor-pointer text-xs text-[var(--text-secondary)] hover:bg-[var(--glass-surface-soft)] w-8 h-8 p-0 data-[popover-trigger]:bg-[var(--glass-surface-soft)] shrink-0"
                         aria-expanded="false" aria-haspopup="dialog">
                         <Paperclip :size="16" />
                     </button>

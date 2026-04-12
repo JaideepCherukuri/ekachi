@@ -1,4 +1,4 @@
-from typing import Optional, AsyncGenerator, List
+from typing import Optional, AsyncGenerator, List, Callable
 import logging
 from datetime import datetime
 from app.domain.models.session import Session, SessionStatus
@@ -32,11 +32,13 @@ class AgentDomainService:
         file_storage: FileStorage,
         mcp_repository: MCPRepository,
         search_engine: Optional[SearchEngine] = None,
+        search_engine_factory: Optional[Callable[[Optional[str]], Optional[SearchEngine]]] = None,
     ):
         self._repository = agent_repository
         self._session_repository = session_repository
         self._sandbox_cls = sandbox_cls
         self._search_engine = search_engine
+        self._search_engine_factory = search_engine_factory
         self._task_cls = task_cls
         self._file_storage = file_storage
         self._mcp_repository = mcp_repository
@@ -58,12 +60,22 @@ class AgentDomainService:
             sandbox = await self._sandbox_cls.create()
             session.sandbox_id = sandbox.id
             await self._session_repository.save(session)
-        browser = await sandbox.get_browser()
+        browser = await sandbox.get_browser(session.browser_engine, session.browser_cdp_url)
         if not browser:
             logger.error(f"Failed to get browser for Sandbox {sandbox_id}")
             raise RuntimeError(f"Failed to get browser for Sandbox {sandbox_id}")
+        if session.browser_cookies:
+            cookie_result = await browser.set_cookies(session.browser_cookies)
+            if not cookie_result.success:
+                logger.warning(
+                    "Failed to apply persisted browser cookies for session %s: %s",
+                    session.id,
+                    cookie_result.message,
+                )
         
         await self._session_repository.save(session)
+
+        search_engine = self._search_engine_factory(session.search_provider) if self._search_engine_factory else self._search_engine
 
         task_runner = AgentTaskRunner(
             session_id=session.id,
@@ -72,7 +84,7 @@ class AgentDomainService:
             sandbox=sandbox,
             browser=browser,
             file_storage=self._file_storage,
-            search_engine=self._search_engine,
+            search_engine=search_engine,
             session_repository=self._session_repository,
             agent_repository=self._repository,
             mcp_repository=self._mcp_repository,

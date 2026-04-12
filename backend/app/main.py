@@ -7,12 +7,12 @@ import asyncio
 from app.core.config import get_settings
 from app.infrastructure.storage.mongodb import get_mongodb
 from app.infrastructure.storage.redis import get_redis
-from app.interfaces.dependencies import get_agent_service
+from app.interfaces.dependencies import get_agent_service, get_trigger_service
 from app.interfaces.api.routes import router
 from app.interfaces.api.openai_routes import router as openai_router
 from app.infrastructure.logging import setup_logging
 from app.interfaces.errors.exception_handlers import register_exception_handlers
-from app.infrastructure.models.documents import AgentDocument, SessionDocument, UserDocument, ClawDocument
+from app.infrastructure.models.documents import AgentDocument, SessionDocument, UserDocument, ClawDocument, ProjectDocument, ProviderDocument, TriggerDocument, TriggerRunDocument, SkillDocument, MemoryNoteDocument, WorkerDocument
 from beanie import init_beanie
 
 # Initialize logging system
@@ -35,12 +35,13 @@ async def lifespan(app: FastAPI):
     # Initialize Beanie
     await init_beanie(
         database=get_mongodb().client[settings.mongodb_database],
-        document_models=[AgentDocument, SessionDocument, UserDocument, ClawDocument]
+        document_models=[AgentDocument, SessionDocument, UserDocument, ClawDocument, ProjectDocument, ProviderDocument, TriggerDocument, TriggerRunDocument, SkillDocument, MemoryNoteDocument, WorkerDocument]
     )
     logger.info("Successfully initialized Beanie")
     
     # Initialize Redis
     await get_redis().initialize()
+    await get_trigger_service().start()
     
     try:
         yield
@@ -54,6 +55,14 @@ async def lifespan(app: FastAPI):
 
 
         logger.info("Cleaning up AgentService instance")
+        try:
+            await get_trigger_service().shutdown()
+            logger.info("TriggerService shutdown completed successfully")
+        except asyncio.TimeoutError:
+            logger.warning("TriggerService shutdown timed out after 30 seconds")
+        except Exception as e:
+            logger.error(f"Error during TriggerService cleanup: {str(e)}")
+
         try:
             await asyncio.wait_for(get_agent_service().shutdown(), timeout=30.0)
             logger.info("AgentService shutdown completed successfully")

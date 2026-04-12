@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Any, Optional, List
 from app.interfaces.schemas.event import AgentSSEEvent
 from app.domain.models.session import SessionStatus
 
@@ -15,6 +15,17 @@ class ChatRequest(BaseModel):
 class CreateSessionRequest(BaseModel):
     """Create session request schema"""
     model_name: Optional[str] = None
+    provider_id: Optional[str] = None
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+
+
+class UpdateSessionProjectRequest(BaseModel):
+    """Update session project metadata"""
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
 
 
 class ShellViewRequest(BaseModel):
@@ -25,6 +36,16 @@ class ShellViewRequest(BaseModel):
 class CreateSessionResponse(BaseModel):
     """Create session response schema"""
     session_id: str
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
 
 
 class GetSessionResponse(BaseModel):
@@ -34,6 +55,17 @@ class GetSessionResponse(BaseModel):
     status: SessionStatus
     events: List[AgentSSEEvent] = []
     is_shared: bool = False
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
 
 
 class ListSessionItem(BaseModel):
@@ -45,6 +77,17 @@ class ListSessionItem(BaseModel):
     status: SessionStatus
     unread_message_count: int
     is_shared: bool = False
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
 
 
 class ListSessionResponse(BaseModel):
@@ -79,3 +122,14 @@ class SharedSessionResponse(BaseModel):
     status: SessionStatus
     events: List[AgentSSEEvent] = []
     is_shared: bool
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    project_color: Optional[str] = None
+    provider_id: Optional[str] = None
+    provider_label: Optional[str] = None
+    model_name: Optional[str] = None
+    browser_engine: Optional[str] = None
+    browser_cdp_url: Optional[str] = None
+    browser_cookie_profile: Optional[str] = None
+    browser_extension_paths: List[str] = []
+    browser_cookies: List[dict[str, Any]] = []
