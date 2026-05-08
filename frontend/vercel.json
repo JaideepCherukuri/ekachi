@@ -1,8 +1,19 @@
 {
-  "rewrites": [
+  "installCommand": "npm install && cd landing && npm install",
+  "buildCommand": "npm run build && cd landing && npx next build && mkdir -p ../dist/_landing && cp -r out/. ../dist/_landing/",
+  "outputDirectory": "dist",
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "ekachi.com" }],
+      "dest": "/_landing/$1"
+    },
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "www.ekachi.com" }],
+      "dest": "/_landing/$1"
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
