@@ -8,8 +8,7 @@ Ekachi 是一个可自托管的 AI Agent 工作台，包含 Vue 前端、FastAPI
 
 - 应用：`https://ekachi.com`
 - API：`https://api.ekachi.com`
-- 模型入口：兼容 LiteLLM 的代理 `https://api.vm.jaideepch.com/v1`
-- 主模型：`openai/gpt-5.4`
+- 模型访问：通过 `API_BASE` 配置的 OpenAI 兼容上游
 
 ## 核心能力
 
@@ -26,7 +25,8 @@ Ekachi 是一个可自托管的 AI Agent 工作台，包含 Vue 前端、FastAPI
 - `backend`：FastAPI 后端、鉴权、会话与编排逻辑
 - `sandbox`：Agent 工具执行所用的运行时镜像
 - `claw`：OpenClaw 集成镜像与桥接逻辑
-- `deploy/azure`：生产部署 compose 文件与参考资料
+- `deploy/aws`：AWS EC2 生产部署方案
+- `deploy/azure`：历史部署参考资料
 
 ## 本地开发
 
@@ -59,8 +59,9 @@ MODEL_NAME=gpt-4o
 当前线上部署使用：
 
 - Vercel 托管前端
-- Azure VM 托管后端、MongoDB、Redis 与 Docker 运行时
+- `us-east-1` 的 AWS EC2 托管后端、MongoDB、Redis 与 Docker 运行时
 - Caddy 负责 `api.ekachi.com` 的 TLS 与反向代理
-- LiteLLM 兼容代理作为模型访问入口
+- AWS Secrets Manager 管理运行时密钥
+- 通过 `API_BASE` 直接访问 OpenAI 兼容模型上游
 
 完整的生产拓扑、请求链路、密钥与运维说明见 [production-system-architecture.md](production-system-architecture.md)。

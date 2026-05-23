@@ -2,7 +2,7 @@
 set -euo pipefail
 
 dnf -y update
-dnf -y install git docker jq curl python3
+dnf -y install git docker jq python3
 systemctl enable --now docker
 
 if id ec2-user >/dev/null 2>&1; then

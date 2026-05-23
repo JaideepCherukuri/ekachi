@@ -7,10 +7,10 @@ This document describes the production architecture currently used for Ekachi.
 Ekachi is deployed as a split-stack system:
 
 - `ekachi.com` serves the Vue frontend from Vercel
-- `api.ekachi.com` serves the FastAPI backend from an Azure VM
-- MongoDB and Redis run on the same Azure VM as managed Docker containers
+- `api.ekachi.com` serves the FastAPI backend from an AWS EC2 host in `us-east-1`
+- MongoDB and Redis run on the same EC2 host as managed Docker containers
 - The backend creates per-session sandbox containers and Claw containers through the host Docker daemon
-- Model traffic is routed to an OpenAI-compatible LiteLLM proxy at `https://api.vm.jaideepch.com/v1`
+- Model traffic is routed directly to the configured OpenAI-compatible upstream defined by `API_BASE`
 
 ## Production Topology
 
@@ -18,14 +18,14 @@ Ekachi is deployed as a split-stack system:
 flowchart LR
     user[End User Browser]
     vercel[Vercel Project\nFrontend SPA]
-    caddy[Caddy on Azure VM\napi.ekachi.com]
+    caddy[Caddy on AWS EC2\napi.ekachi.com]
     backend[FastAPI Backend Container]
     mongo[(MongoDB Container)]
     redis[(Redis Container)]
     docker[Docker Daemon]
     sandbox[Ephemeral Sandbox Containers]
     claw[Ephemeral Claw Containers]
-    litellm[LiteLLM-Compatible Proxy\napi.vm.jaideepch.com/v1]
+    llm[Configured OpenAI-Compatible Upstream\n(API_BASE)]
 
     user -->|HTTPS| vercel
     user -->|HTTPS /api calls| caddy
@@ -35,7 +35,7 @@ flowchart LR
     backend --> docker
     docker --> sandbox
     docker --> claw
-    backend -->|LLM requests| litellm
+    backend -->|LLM requests| llm
     claw -->|callback to backend| backend
 ```
 
@@ -52,11 +52,12 @@ flowchart LR
 
 ### Backend
 
-- Platform: Azure VM
+- Platform: AWS EC2 (`us-east-1`)
 - Reverse proxy: Caddy
 - Public API origin: `https://api.ekachi.com`
 - Private backend port: `127.0.0.1:8000`
 - Deployment mode: Docker Compose
+- Secrets source: AWS Secrets Manager
 
 ### Data Services
 
@@ -72,17 +73,16 @@ flowchart LR
 ### Model Layer
 
 - Provider pattern: OpenAI-compatible base URL
-- Gateway: `https://api.vm.jaideepch.com/v1`
-- Primary production model: `openai/gpt-5.4`
-- Other configured models available through the same proxy:
-  - `gemini/gemini-3.1-pro-preview`
-  - `github_copilot/gpt-5.4`
+- Runtime endpoint: `API_BASE`
+- Runtime model: `MODEL_NAME`
+- OpenClaw proxy requests use OpenAI-compatible chat completions against the configured upstream
+- Azure OpenAI-compatible upstreams are supported via `api-key` authentication in the OpenClaw proxy path
 
-## Deployment Layout On Azure VM
+## Deployment Layout On AWS EC2
 
 ```mermaid
 flowchart TD
-    subgraph VM[Azure VM]
+    subgraph VM[AWS EC2 us-east-1]
         caddy[Caddy Service]
         subgraph compose[Docker Compose Stack]
             backend[backend]
@@ -156,7 +156,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant B as Backend
-    participant G as LiteLLM Proxy
+    participant G as Configured OpenAI-Compatible Upstream
     participant P as Model Provider
 
     B->>G: Chat completion request
@@ -197,9 +197,9 @@ The live system depends on these configuration groups:
 ### Deploy Process
 
 1. Push code to the standalone GitHub repository.
-2. Vercel rebuilds and redeploys the frontend from GitHub.
-3. Backend changes are deployed on the Azure VM via Docker Compose.
-4. Caddy continues to terminate TLS and proxy traffic to the backend container.
+2. Vercel rebuilds or redeploys the frontend for `ekachi.com`.
+3. Backend changes are deployed on the AWS EC2 host via `deploy/aws/deploy.sh`.
+4. Caddy terminates TLS and proxies traffic to the backend container.
 
 ### Observability State
 
@@ -214,11 +214,10 @@ Current production setup includes basic service availability checks only. It doe
 ## Known Architectural Constraints
 
 - The backend is stateful and Docker-dependent, so it cannot be moved unchanged to Vercel Functions.
-- MongoDB, Redis, backend, and Docker runtime currently share one Azure VM, which is operationally simple but a single point of failure.
+- MongoDB, Redis, backend, and Docker runtime currently share one AWS EC2 host, which is operationally simple but a single point of failure.
 - Domain routing for the frontend currently depends on Vercel project/domain configuration and should remain attached to the Ekachi project for automatic production cutover.
 
 ## Current Live Endpoints
 
 - `https://ekachi.com`
 - `https://api.ekachi.com`
-- `https://api.vm.jaideepch.com/v1`

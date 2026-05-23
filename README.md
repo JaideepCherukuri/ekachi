@@ -8,8 +8,7 @@ Ekachi is a self-hosted AI agent workspace with a Vue frontend, a FastAPI backen
 
 - App: `https://ekachi.com`
 - API: `https://api.ekachi.com`
-- Model endpoint: LiteLLM-compatible proxy at `https://api.vm.jaideepch.com/v1`
-- Primary model: `openai/gpt-5.4`
+- Runtime model access: OpenAI-compatible upstream configured through `API_BASE`
 
 ## Core Capabilities
 
@@ -26,7 +25,8 @@ Ekachi is a self-hosted AI agent workspace with a Vue frontend, a FastAPI backen
 - `backend`: FastAPI application, orchestration, auth, session APIs
 - `sandbox`: Runtime image used for agent tool execution
 - `claw`: OpenClaw integration image and bridge logic
-- `deploy/azure`: Production compose files and deployment reference material
+- `deploy/aws`: AWS EC2 production deployment path
+- `deploy/azure`: Legacy deployment reference material
 
 ## Local Development
 
@@ -59,9 +59,10 @@ When dependencies change, rebuild with:
 The current production deployment uses:
 
 - Vercel for the frontend
-- Azure VM for the backend, MongoDB, Redis, and Docker runtime
+- AWS EC2 in `us-east-1` for the backend, MongoDB, Redis, and Docker runtime
 - Caddy for TLS termination and reverse proxying on `api.ekachi.com`
-- LiteLLM-compatible proxy for model access
+- AWS Secrets Manager for runtime secrets
+- Direct OpenAI-compatible upstream model access configured through `API_BASE`
 
 See [production-system-architecture.md](production-system-architecture.md) for the full production topology, request flows, secrets, and operational notes.
 
