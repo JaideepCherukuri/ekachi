@@ -2,18 +2,21 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install curl
-RUN apt-get update && apt-get install -y curl
+ARG UV_INDEX_URL=https://pypi.org/simple
+ENV UV_INDEX_URL=${UV_INDEX_URL}
 
-# Install nodejs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install uv
-RUN pip install uv
-
-# Configure uv to use Aliyun mirror
-ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --no-cache-dir uv
 
 # Install dependencies
 COPY pyproject.toml ./

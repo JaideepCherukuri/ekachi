@@ -6,6 +6,7 @@ authenticated using per-user API keys.
 import logging
 import json
 from typing import Optional, AsyncIterator
+from urllib.parse import urlparse
 from fastapi import APIRouter, Request, HTTPException, status
 from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
@@ -37,14 +38,7 @@ async def _stream_llm_response(
 ) -> AsyncIterator[bytes]:
     """Stream LLM response from the configured backend"""
     api_base = settings.api_base or "https://api.openai.com"
-    api_key = settings.api_key
-    extra_headers = settings.extra_headers or {}
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-        **extra_headers,
-    }
+    headers = _build_upstream_headers(settings)
 
     target_url = f"{api_base.rstrip('/')}/chat/completions"
 
@@ -76,14 +70,7 @@ async def _get_llm_response(
 ) -> dict:
     """Get non-streaming LLM response"""
     api_base = settings.api_base or "https://api.openai.com"
-    api_key = settings.api_key
-    extra_headers = settings.extra_headers or {}
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-        **extra_headers,
-    }
+    headers = _build_upstream_headers(settings)
 
     target_url = f"{api_base.rstrip('/')}/chat/completions"
 
@@ -99,6 +86,28 @@ def _openai_error_response(status_code: int, message: str, error_type: str) -> J
         status_code=status_code,
         content={"error": {"message": message, "type": error_type}},
     )
+
+
+def _build_upstream_headers(settings) -> dict[str, str]:
+    """Build auth headers for OpenAI-compatible upstreams.
+
+    Azure OpenAI's v1 endpoint continues to use the `api-key` header for key-based
+    auth, while non-Azure OpenAI-compatible backends typically expect a Bearer token.
+    """
+    api_base = settings.api_base or "https://api.openai.com"
+    api_key = settings.api_key
+    extra_headers = settings.extra_headers or {}
+    hostname = (urlparse(api_base).hostname or "").lower()
+
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if api_key:
+        if hostname.endswith(".openai.azure.com") or hostname.endswith(".services.ai.azure.com"):
+            headers["api-key"] = api_key
+        else:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+    headers.update(extra_headers)
+    return headers
 
 
 @router.post("/v1/chat/completions")

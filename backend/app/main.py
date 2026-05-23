@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
@@ -72,6 +72,26 @@ async def lifespan(app: FastAPI):
             logger.error(f"Error during AgentService cleanup: {str(e)}")
 
 app = FastAPI(title="Manus AI Agent", lifespan=lifespan)
+
+
+@app.get("/health", tags=["ops"])
+async def healthcheck():
+    """Basic liveness/readiness probe for reverse proxies and operators."""
+    services: dict[str, str] = {}
+    try:
+        await get_mongodb().client.admin.command("ping")
+        services["mongodb"] = "ok"
+
+        await get_redis().client.ping()
+        services["redis"] = "ok"
+
+        return {"status": "ok", "services": services}
+    except Exception as exc:
+        logger.exception("Health check failed")
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "error", "services": services, "message": str(exc)},
+        ) from exc
 
 # Configure CORS
 app.add_middleware(

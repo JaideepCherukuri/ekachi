@@ -1,0 +1,85 @@
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - manus-network
+
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: ekachi/backend:prod
+    restart: unless-stopped
+    depends_on:
+      - sandbox
+      - claw
+      - mongodb
+      - redis
+    env_file:
+      - ./.env.production
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - manus-network
+
+  sandbox:
+    image: ${SANDBOX_IMAGE}
+    command: /bin/sh -c "exit 0"
+    restart: "no"
+    networks:
+      - manus-network
+
+  claw:
+    image: ${CLAW_IMAGE}
+    entrypoint: /bin/sh -c "exit 0"
+    restart: "no"
+    networks:
+      - manus-network
+
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - manus-network
+
+  redis:
+    image: redis:7.2
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - manus-network
+
+volumes:
+  caddy_config:
+  caddy_data:
+  mongodb_data:
+  redis_data:
+
+networks:
+  manus-network:
+    name: manus-network
+    driver: bridge
